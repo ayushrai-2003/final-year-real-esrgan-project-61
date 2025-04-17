@@ -10,9 +10,8 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { ArrowRight, Settings, Folders, BarChart, Play, PauseCircle, Save, Code } from "lucide-react";
-import { ModelTrainingCode } from "@/components/model-training-code";
-import { Toaster } from "@/components/ui/sonner";
+import { ArrowRight, Settings, Folders, BarChart, Play, PauseCircle, Save } from "lucide-react";
+import { Toaster } from "sonner";
 
 const Training = () => {
   const [trainingStatus, setTrainingStatus] = useState('idle');
@@ -85,7 +84,7 @@ const Training = () => {
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="training">Training</TabsTrigger>
               <TabsTrigger value="testing">Testing</TabsTrigger>
-              <TabsTrigger value="code">Code</TabsTrigger>
+              <TabsTrigger value="process">Process Overview</TabsTrigger>
             </TabsList>
             
             <TabsContent value="training" className="mt-6">
@@ -318,21 +317,61 @@ const Training = () => {
               </Card>
             </TabsContent>
             
-            <TabsContent value="code" className="mt-6">
-              <div className="space-y-4">
-                <div className="bg-esrgan-black-light rounded-xl border border-gray-800 p-6">
-                  <h3 className="mb-4 text-xl font-medium text-white flex items-center">
-                    <Code className="mr-2 h-5 w-5 text-esrgan-orange" />
-                    Implementation Code
-                  </h3>
-                  <p className="text-gray-300 mb-4">
-                    Below is the sample Python code to train and test your ESRGAN model. You can copy and adapt 
-                    this code for your own implementation.
-                  </p>
-                </div>
+            <TabsContent value="process" className="mt-6">
+              <Card className="bg-esrgan-black-light border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-white">Training Process Overview</CardTitle>
+                  <CardDescription>Understanding the ESRGAN training workflow</CardDescription>
+                </CardHeader>
                 
-                <ModelTrainingCode />
-              </div>
+                <CardContent>
+                  <div className="grid gap-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-white">1. Dataset Preparation</h3>
+                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
+                        <p className="text-gray-300">
+                          Prepare your dataset with paired low-resolution and high-resolution images.
+                          The dataset should be organized in two folders: 'LR' for low-resolution and 'HR' for high-resolution images.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-white">2. Model Configuration</h3>
+                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
+                        <p className="text-gray-300">
+                          Configure the training parameters including batch size, learning rate, and epochs.
+                          You can also choose to start from a pre-trained model for better results.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-white">3. Training Phase</h3>
+                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
+                        <p className="text-gray-300">
+                          During training, the model learns to generate high-quality images through:
+                        </p>
+                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300">
+                          <li>Perceptual Loss Optimization</li>
+                          <li>Adversarial Training</li>
+                          <li>Feature Matching</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-white">4. Evaluation</h3>
+                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
+                        <p className="text-gray-300">
+                          Monitor the training progress through metrics like PSNR and SSIM.
+                          Regular evaluation helps in identifying the optimal model checkpoint.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
