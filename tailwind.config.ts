@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,20 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+        // Custom colors for our ESRGAN app
+        esrgan: {
+          black: {
+            DEFAULT: '#121212',
+            light: '#1a1a1a',
+            dark: '#0a0a0a',
+          },
+          orange: {
+            DEFAULT: '#FF4500',
+            light: '#FF5722',
+            dark: '#E63900',
+          },
+        }
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,12 +98,44 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+        'pulse-slow': {
+          '0%, 100%': {
+            opacity: '1',
+          },
+          '50%': {
+            opacity: '0.5',
+          },
+        },
+        'fade-in': {
+          '0%': {
+            opacity: '0',
+          },
+          '100%': {
+            opacity: '1',
+          },
+        },
+        'border-glow': {
+          '0%, 100%': {
+            boxShadow: '0 0 5px #FF4500, 0 0 15px #FF4500, 0 0 20px #FF4500',
+          },
+          '50%': {
+            boxShadow: '0 0 10px #FF5722, 0 0 25px #FF5722, 0 0 30px #FF5722',
+          },
+        }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+        'pulse-slow': 'pulse-slow 3s ease-in-out infinite',
+        'fade-in': 'fade-in 0.5s ease-in-out',
+        'border-glow': 'border-glow 2s ease-in-out infinite',
+			},
+      backgroundImage: {
+        'hero-pattern': 'radial-gradient(circle at top right, rgba(255, 69, 0, 0.15), transparent 40%)',
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'orange-red-gradient': 'linear-gradient(90deg, #FF4500, #FF5722)',
+      },
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
