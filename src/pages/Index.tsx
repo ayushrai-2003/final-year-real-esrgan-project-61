@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/file-upload";
+import { FileUpload } from "@/components/ui/file-upload";
 import { EnhancementProcessor } from "@/components/enhancement-processor";
 import { ImageComparison } from "@/components/image-comparison";
 import { Header } from "@/components/header";
