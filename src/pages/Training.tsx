@@ -75,7 +75,7 @@ const Training = () => {
       <main className="flex-1 py-16">
         <div className="container">
           <h1 className="mb-6 text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl text-center">
-            ESRGAN <span className="gradient-text">Training Dashboard</span>
+            Real-ESRGAN <span className="gradient-text">Training Dashboard</span>
           </h1>
           <p className="mx-auto mb-12 max-w-2xl text-lg text-gray-300 text-center">
             Train your own ESRGAN model for image enhancement with custom datasets and parameters

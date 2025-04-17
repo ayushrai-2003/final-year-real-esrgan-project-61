@@ -8,7 +8,7 @@ export function Footer() {
         <div className="flex flex-col items-center gap-2 md:items-start">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-gradient-to-br from-esrgan-orange to-red-600"></div>
-            <span className="text-sm font-medium gradient-text">ImageEnhancer.AI</span>
+            <span className="text-sm font-medium gradient-text">Real-ESRGAN Enhancer</span>
           </div>
           <p className="text-xs text-gray-400">
             Final Year Project - Image Quality Enhancement using ESRGAN

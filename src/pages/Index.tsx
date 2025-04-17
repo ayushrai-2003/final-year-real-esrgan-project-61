@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -50,7 +49,7 @@ const Index = () => {
               </h1>
               <p className="mx-auto mb-8 max-w-2xl text-lg text-gray-300">
                 Transform low-quality images into stunning high-resolution masterpieces with our 
-                state-of-the-art AI-powered enhancement system.
+                state-of-the-art DL-Powered enhancement system.
               </p>
               <div className="flex justify-center gap-4">
                 <Button 
