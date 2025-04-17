@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -12,6 +12,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { ArrowRight, Settings, Folders, BarChart, Play, PauseCircle, Save } from "lucide-react";
 import { Toaster } from "sonner";
+import TrainingMetrics from '@/components/training/TrainingMetrics';
 
 const Training = () => {
   const [trainingStatus, setTrainingStatus] = useState('idle');
@@ -22,50 +23,69 @@ const Training = () => {
   const [usePretrainedModel, setUsePretrainedModel] = useState(true);
   const [validationSplit, setValidationSplit] = useState(0.2);
   const [trainingProgress, setTrainingProgress] = useState(0);
-  
-  // Mock data for charts
-  const trainingLoss = Array.from({ length: 10 }, (_, i) => ({
-    epoch: i + 1,
-    loss: 0.5 - (0.4 * i / 10)
-  }));
-  
-  const testingMetrics = {
-    psnr: 28.7,
-    ssim: 0.82,
-    accuracy: 0.89
+  const [trainingMetrics, setTrainingMetrics] = useState<Array<{
+    epoch: number;
+    loss: number;
+    accuracy: number;
+    psnr: number;
+    ssim: number;
+  }>>([]);
+
+  const generateTrainingData = (epoch: number) => {
+    const baseLoss = 2.5 * Math.exp(-epoch / 50);
+    const baseAccuracy = 0.5 + 0.45 * (1 - Math.exp(-epoch / 30));
+    const basePSNR = 20 + 10 * (1 - Math.exp(-epoch / 40));
+    const baseSSIM = 0.5 + 0.45 * (1 - Math.exp(-epoch / 35));
+
+    const noise = () => (Math.random() - 0.5) * 0.1;
+
+    return {
+      epoch,
+      loss: Math.max(0, baseLoss + noise()),
+      accuracy: Math.min(1, Math.max(0, baseAccuracy + noise())),
+      psnr: Math.max(0, basePSNR + noise() * 2),
+      ssim: Math.min(1, Math.max(0, baseSSIM + noise())),
+    };
   };
-  
+
+  useEffect(() => {
+    if (trainingStatus === 'training') {
+      const interval = setInterval(() => {
+        setTrainingProgress((prev) => {
+          const newProgress = prev + 1;
+          if (newProgress <= 100) {
+            const currentEpoch = Math.floor((newProgress / 100) * epochs);
+            setTrainingMetrics((prevMetrics) => [
+              ...prevMetrics,
+              generateTrainingData(currentEpoch),
+            ]);
+          }
+          return newProgress >= 100 ? 100 : newProgress;
+        });
+      }, 300);
+
+      return () => clearInterval(interval);
+    }
+  }, [trainingStatus, epochs]);
+
   const handleDatasetUpload = (file: File) => {
     setDataset(file);
   };
-  
+
   const handleStartTraining = () => {
-    // In a real app, you would call a backend API to start training
     setTrainingStatus('training');
-    
-    // Mock training progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 1;
-      setTrainingProgress(progress);
-      
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTrainingStatus('completed');
-      }
-    }, 300);
+    setTrainingProgress(0);
+    setTrainingMetrics([]);
   };
-  
+
   const handleStopTraining = () => {
     setTrainingStatus('stopped');
   };
-  
+
   const handleSaveModel = () => {
-    // In a real app, you would call a backend API to save the trained model
-    // For now, we'll just show a toast message
     toast.success('Model saved successfully!');
   };
-  
+
   return (
     <div className="flex min-h-screen flex-col bg-esrgan-black">
       <Toaster position="top-center" />
@@ -216,17 +236,22 @@ const Training = () => {
                             <span>Epoch {Math.floor(trainingProgress / 100 * epochs)} of {epochs}</span>
                             <span>{trainingProgress}%</span>
                           </div>
+                          
+                          {trainingMetrics.length > 0 && (
+                            <TrainingMetrics 
+                              trainingData={trainingMetrics}
+                              currentEpoch={Math.floor(trainingProgress / 100 * epochs)}
+                            />
+                          )}
                         </div>
                       )}
                       
                       {(trainingStatus === 'completed' || trainingStatus === 'stopped') && (
                         <div className="space-y-4">
-                          <div className="h-48 bg-esrgan-black-dark rounded-md p-4">
-                            {/* In a real app, you would render a chart library here */}
-                            <div className="text-center text-gray-400 py-16">
-                              Training loss graph would be displayed here
-                            </div>
-                          </div>
+                          <TrainingMetrics 
+                            trainingData={trainingMetrics}
+                            currentEpoch={epochs}
+                          />
                         </div>
                       )}
                     </CardContent>
