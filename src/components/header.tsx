@@ -2,10 +2,12 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Github, Info } from "lucide-react";
+import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
+import { Link } from 'react-router-dom';
 
 export function Header() {
   return (
-    <header className="w-full border-b border-gray-800 bg-esrgan-black">
+    <header className="w-full border-b border-gray-800 bg-esrgan-black sticky top-0 z-50">
       <div className="container flex h-16 items-center justify-between py-4">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-esrgan-orange to-red-600"></div>
@@ -13,6 +15,36 @@ export function Header() {
             ImageEnhancer.AI
           </span>
         </div>
+        
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <Link to="/#hero-section" className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                Home
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link to="/#upload-section" className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                Upload
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link to="/#about-section" className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                About
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link to="/#contact-section" className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                Contact
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link to="/training" className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                Training
+              </Link>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
         
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
