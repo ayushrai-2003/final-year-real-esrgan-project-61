@@ -12,6 +12,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { ArrowRight, Settings, Folders, BarChart, Play, PauseCircle, Save, Code } from "lucide-react";
 import { ModelTrainingCode } from "@/components/model-training-code";
+import { Toaster } from "@/components/ui/sonner";
 
 const Training = () => {
   const [trainingStatus, setTrainingStatus] = useState('idle');
