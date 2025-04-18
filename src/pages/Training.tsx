@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,8 +36,8 @@ const Training = () => {
     psnr: 26.8,
     ssim: 0.87,
     accuracy: 0.93,
-    plateDetectionAccuracy: 0.89,
-    plateRecognitionAccuracy: 0.85
+    plateDetectionAccuracy: 0.0,
+    plateRecognitionAccuracy: 0.0
   });
   const [selectedDataset, setSelectedDataset] = useState<'DIV2K' | 'DF2K' | 'INDIAN_LP' | 'AUTO_LP'>('DIV2K');
   const [modelType, setModelType] = useState<'general' | 'license-plate'>('general');
@@ -67,15 +66,12 @@ const Training = () => {
       ssim: Math.min(1, Math.max(0, baseSSIM + noise())),
     };
     
-    // Add license plate specific metrics if using license plate model
     if (modelType === 'license-plate') {
-      // Plate detection starts lower but improves faster in early epochs
       metrics.plateDetectionAccuracy = Math.min(
         0.98, 
         0.4 + 0.55 * (1 - Math.exp(-epoch / 25)) + noise() * 0.5
       );
       
-      // Plate recognition is more challenging, improves more slowly
       metrics.plateRecognitionAccuracy = Math.min(
         0.95, 
         0.3 + 0.6 * (1 - Math.exp(-epoch / 35)) + noise() * 0.6
@@ -105,7 +101,6 @@ const Training = () => {
     }
   }, [trainingStatus, epochs, modelType]);
 
-  // Update testingMetrics when model type changes
   useEffect(() => {
     if (modelType === 'license-plate') {
       setTestingMetrics({
@@ -132,6 +127,11 @@ const Training = () => {
   };
 
   const handleStartTraining = () => {
+    if (!dataset && selectedDataset === '') {
+      toast.error('Please select or upload a dataset first');
+      return;
+    }
+    
     setTrainingStatus('training');
     setTrainingProgress(0);
     setTrainingMetrics([]);
@@ -144,7 +144,44 @@ const Training = () => {
   };
 
   const handleSaveModel = () => {
+    if (trainingProgress < 100) {
+      toast.error('Training must be completed before saving the model');
+      return;
+    }
     toast.success('Model saved successfully!');
+  };
+
+  const handleDatasetSelect = (dataset: 'DIV2K' | 'DF2K' | 'INDIAN_LP' | 'AUTO_LP') => {
+    setSelectedDataset(dataset);
+    if (dataset === 'INDIAN_LP' || dataset === 'AUTO_LP') {
+      setModelType('license-plate');
+      toast.info('Switched to license plate recognition mode');
+    }
+    toast.success(`Dataset ${dataset} selected for training`);
+  };
+
+  const startTesting = () => {
+    toast.info('Starting test process...');
+    setTimeout(() => {
+      if (modelType === 'license-plate') {
+        setTestingMetrics({
+          psnr: 28.3,
+          ssim: 0.91,
+          accuracy: 0.88,
+          plateDetectionAccuracy: 0.89,
+          plateRecognitionAccuracy: 0.85
+        });
+      } else {
+        setTestingMetrics({
+          psnr: 26.8,
+          ssim: 0.87,
+          accuracy: 0.93,
+          plateDetectionAccuracy: 0.0,
+          plateRecognitionAccuracy: 0.0
+        });
+      }
+      toast.success('Testing completed successfully!');
+    }, 2000);
   };
 
   const getDatasetInfo = () => {
@@ -294,16 +331,23 @@ const Training = () => {
                     <CardHeader>
                       <CardTitle className="text-white flex items-center">
                         <Folders className="mr-2 h-5 w-5 text-esrgan-orange" />
-                        Dataset Upload
+                        Dataset Selection
                       </CardTitle>
-                      <CardDescription>Upload your training dataset (supports zip, tar, gz, and various image formats)</CardDescription>
+                      <CardDescription>Select or upload your training dataset</CardDescription>
                     </CardHeader>
                     
                     <CardContent>
-                      <FileUpload
-                        onFileSelect={handleDatasetUpload}
-                        accept=".zip,.tar,.gz,.jpg,.jpeg,.png,.bmp,.webp"
-                      />
+                      <div className="grid gap-4">
+                        <FileUpload
+                          onFileSelect={handleDatasetUpload}
+                          accept=".zip,.tar,.gz,.jpg,.jpeg,.png,.bmp,.webp"
+                        />
+                        {dataset && (
+                          <div className="bg-esrgan-black p-3 rounded-md border border-gray-800">
+                            <p className="text-gray-300">Selected dataset: {dataset.name}</p>
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                   
