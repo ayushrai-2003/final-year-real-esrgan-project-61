@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,13 +30,12 @@ const Training = () => {
     psnr: number;
     ssim: number;
   }>>([]);
-  
-  // Add the missing testingMetrics state
   const [testingMetrics, setTestingMetrics] = useState({
     psnr: 26.8,
     ssim: 0.87,
     accuracy: 0.93
   });
+  const [selectedDataset, setSelectedDataset] = useState<'DIV2K' | 'DF2K'>('DIV2K');
 
   const generateTrainingData = (epoch: number) => {
     const baseLoss = 2.5 * Math.exp(-epoch / 50);
@@ -105,7 +103,7 @@ const Training = () => {
             Real-ESRGAN <span className="gradient-text">Training Dashboard</span>
           </h1>
           <p className="mx-auto mb-12 max-w-2xl text-lg text-gray-300 text-center">
-            Train your own ESRGAN model for image enhancement with custom datasets and parameters
+            Train your own Real-ESRGAN model for image enhancement with high-quality datasets
           </p>
           
           <Tabs defaultValue="training" className="max-w-5xl mx-auto">
@@ -354,41 +352,50 @@ const Training = () => {
               <Card className="bg-esrgan-black-light border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-white">Training Process Overview</CardTitle>
-                  <CardDescription>Understanding the ESRGAN training workflow</CardDescription>
+                  <CardDescription>Understanding the Real-ESRGAN training workflow</CardDescription>
                 </CardHeader>
                 
                 <CardContent>
                   <div className="grid gap-6">
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">1. Dataset Preparation</h3>
+                      <h3 className="text-lg font-medium text-white">1. Dataset Selection</h3>
                       <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
-                        <p className="text-gray-300">
-                          Prepare your dataset with paired low-resolution and high-resolution images.
-                          The dataset should be organized in two folders: 'LR' for low-resolution and 'HR' for high-resolution images.
+                        <p className="text-gray-300 mb-4">
+                          Choose between two high-quality datasets:
                         </p>
+                        <ul className="list-disc list-inside space-y-2 text-gray-300 ml-4">
+                          <li><span className="font-medium">DIV2K</span>: High-quality (2K resolution) dataset with 1000 training images</li>
+                          <li><span className="font-medium">DF2K</span>: Combined dataset of DIV2K and Flickr2K, offering 3000 diverse training images</li>
+                        </ul>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">2. Model Configuration</h3>
+                      <h3 className="text-lg font-medium text-white">2. Real-ESRGAN Technology</h3>
                       <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
                         <p className="text-gray-300">
-                          Configure the training parameters including batch size, learning rate, and epochs.
-                          You can also choose to start from a pre-trained model for better results.
+                          Real-ESRGAN is an enhanced version of ESRGAN that introduces:
                         </p>
+                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300 ml-4">
+                          <li>Pure synthetic data training scheme</li>
+                          <li>High-order degradation modeling</li>
+                          <li>U-Net discriminator with spectral normalization</li>
+                          <li>Enhanced perceptual loss and improved sharpness</li>
+                        </ul>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">3. Training Phase</h3>
+                      <h3 className="text-lg font-medium text-white">3. Training Process</h3>
                       <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
                         <p className="text-gray-300">
-                          During training, the model learns to generate high-quality images through:
+                          The Real-ESRGAN training process involves:
                         </p>
-                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300">
-                          <li>Perceptual Loss Optimization</li>
-                          <li>Adversarial Training</li>
-                          <li>Feature Matching</li>
+                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300 ml-4">
+                          <li>Synthetic degradation pipeline for realistic training data</li>
+                          <li>Second-order degradation modeling for better restoration</li>
+                          <li>Enhanced network architecture with improved stability</li>
+                          <li>Training with mixed synthetic and real-world data</li>
                         </ul>
                       </div>
                     </div>
@@ -397,9 +404,15 @@ const Training = () => {
                       <h3 className="text-lg font-medium text-white">4. Evaluation</h3>
                       <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
                         <p className="text-gray-300">
-                          Monitor the training progress through metrics like PSNR and SSIM.
-                          Regular evaluation helps in identifying the optimal model checkpoint.
+                          Model evaluation includes both quantitative metrics (PSNR, SSIM) and 
+                          qualitative assessment of restored images, with particular focus on:
                         </p>
+                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300 ml-4">
+                          <li>Texture quality and sharpness</li>
+                          <li>Artifact suppression</li>
+                          <li>Color fidelity</li>
+                          <li>Overall perceptual quality</li>
+                        </ul>
                       </div>
                     </div>
                   </div>
@@ -407,6 +420,42 @@ const Training = () => {
               </Card>
             </TabsContent>
           </Tabs>
+
+          <div className="mt-8 max-w-5xl mx-auto">
+            <Card className="bg-esrgan-black-light border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white">Dataset Selection</CardTitle>
+                <CardDescription>Choose your training dataset</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button 
+                    variant={selectedDataset === 'DIV2K' ? 'default' : 'outline'}
+                    className={selectedDataset === 'DIV2K' ? 'bg-esrgan-orange' : 'border-gray-700'}
+                    onClick={() => setSelectedDataset('DIV2K')}
+                  >
+                    DIV2K Dataset
+                  </Button>
+                  <Button 
+                    variant={selectedDataset === 'DF2K' ? 'default' : 'outline'}
+                    className={selectedDataset === 'DF2K' ? 'bg-esrgan-orange' : 'border-gray-700'}
+                    onClick={() => setSelectedDataset('DF2K')}
+                  >
+                    DF2K Dataset
+                  </Button>
+                </div>
+                
+                <div className="mt-4 p-4 rounded-lg bg-esrgan-black border border-gray-800">
+                  <h4 className="text-white font-medium mb-2">Selected Dataset: {selectedDataset}</h4>
+                  <p className="text-gray-300">
+                    {selectedDataset === 'DIV2K' 
+                      ? 'DIV2K provides 800 training images and 200 validation images in 2K resolution.'
+                      : 'DF2K combines DIV2K and Flickr2K for a total of 3000 high-quality training images.'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
       
