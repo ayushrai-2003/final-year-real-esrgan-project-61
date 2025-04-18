@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,13 @@ const Training = () => {
     psnr: number;
     ssim: number;
   }>>([]);
+  
+  // Add the missing testingMetrics state
+  const [testingMetrics, setTestingMetrics] = useState({
+    psnr: 26.8,
+    ssim: 0.87,
+    accuracy: 0.93
+  });
 
   const generateTrainingData = (epoch: number) => {
     const baseLoss = 2.5 * Math.exp(-epoch / 50);
