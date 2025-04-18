@@ -1,7 +1,6 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, X, FileIcon, ImageIcon, FileText, FileSpreadsheet, FileVideo, FilePdf, AlertCircle } from "lucide-react";
+import { Upload, X, FileIcon, ImageIcon, FileText, FileSpreadsheet, FileVideo, File, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploadProps {
@@ -28,7 +27,7 @@ export function FileUpload({
     if (type.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-blue-400" />;
     if (type.startsWith('video/')) return <FileVideo className="h-5 w-5 text-purple-400" />;
     if (type.startsWith('text/')) return <FileText className="h-5 w-5 text-yellow-400" />;
-    if (type === 'application/pdf') return <FilePdf className="h-5 w-5 text-red-400" />;
+    if (type === 'application/pdf') return <File className="h-5 w-5 text-red-400" />; // Changed from FilePdf to File
     if (type.includes('spreadsheet') || type.includes('excel')) return <FileSpreadsheet className="h-5 w-5 text-green-400" />;
     return <FileIcon className="h-5 w-5 text-gray-400" />;
   };
