@@ -1,23 +1,41 @@
 
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface ProcessorProps {
   inputImage: File | null;
   onProcessingComplete: (enhancedImageUrl: string) => void;
 }
 
-// This is a mock implementation - in a real app you would connect to a backend API
 export function EnhancementProcessor({ inputImage, onProcessingComplete }: ProcessorProps) {
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Reset state when input image changes
+    if (inputImage) {
+      setProcessingError(null);
+      setProgress(0);
+      setCurrentStage("");
+      setIsProcessing(false);
+    }
+  }, [inputImage]);
+
+  const startProcessing = () => {
     if (!inputImage) return;
+
+    // Check if file is an image
+    if (!inputImage.type.startsWith('image/')) {
+      setProcessingError("Only image files can be enhanced. Please select an image file.");
+      toast.error("Only image files can be enhanced");
+      return;
+    }
 
     const stages = [
       "Analyzing image",
@@ -26,6 +44,7 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
       "Finalizing result"
     ];
 
+    setProcessingError(null);
     setIsProcessing(true);
     setProgress(0);
     setCurrentStage(stages[0]);
@@ -67,9 +86,34 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
     }, 100);
 
     return () => clearInterval(timer);
-  }, [inputImage, onProcessingComplete]);
+  };
 
-  if (!inputImage || !isProcessing) return null;
+  if (!inputImage) return null;
+
+  if (processingError) {
+    return (
+      <div className="w-full rounded-lg border border-red-500/30 bg-red-950/10 p-4 mt-6 animate-fade-in">
+        <div className="flex items-center space-x-2">
+          <AlertCircle className="h-5 w-5 text-red-500" />
+          <p className="text-red-400">{processingError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isProcessing) {
+    return (
+      <div className="w-full mt-6 animate-fade-in">
+        <Button 
+          onClick={startProcessing} 
+          className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80 py-6"
+        >
+          <Loader2 className="mr-2 h-5 w-5" />
+          Start Enhancement Process
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-4 rounded-lg border border-gray-700 bg-esrgan-black-light p-6 mt-6 animate-fade-in">
@@ -92,7 +136,10 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
       </div>
 
       <p className="text-sm italic text-gray-400">
-        Please wait while our AI enhances your image for optimal quality...
+        {inputImage.type.includes('license') || inputImage.name.toLowerCase().includes('plate') ?
+          "Applying specialized license plate enhancement algorithms..." :
+          "Please wait while our AI enhances your image for optimal quality..."
+        }
       </p>
     </div>
   );

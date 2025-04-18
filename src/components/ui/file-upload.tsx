@@ -1,36 +1,54 @@
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
+import { Upload, X, FileIcon, ImageIcon, FileText, FileSpreadsheet, FileVideo, FilePdf, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
   accept?: string;
   className?: string;
+  showSupportedTypes?: boolean;
 }
 
 export function FileUpload({ 
   onFileSelect, 
-  accept = ".jpg,.jpeg,.png,.webp", 
-  className 
+  accept = "*", // Changed to accept all file types
+  className,
+  showSupportedTypes = true
 }: FileUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const getFileTypeIcon = (file: File) => {
+    const type = file.type;
+    
+    if (type.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-blue-400" />;
+    if (type.startsWith('video/')) return <FileVideo className="h-5 w-5 text-purple-400" />;
+    if (type.startsWith('text/')) return <FileText className="h-5 w-5 text-yellow-400" />;
+    if (type === 'application/pdf') return <FilePdf className="h-5 w-5 text-red-400" />;
+    if (type.includes('spreadsheet') || type.includes('excel')) return <FileSpreadsheet className="h-5 w-5 text-green-400" />;
+    return <FileIcon className="h-5 w-5 text-gray-400" />;
+  };
+
   const handleFile = (file: File) => {
     if (file) {
       setSelectedFile(file);
       onFileSelect(file);
       
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Create preview URL for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setPreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // For non-image files, clear any existing preview
+        setPreview(null);
+      }
     }
   };
 
@@ -72,6 +90,8 @@ export function FileUpload({
     }
   };
 
+  const isImageFile = selectedFile?.type.startsWith('image/');
+
   return (
     <div className={cn("w-full", className)}>
       {!selectedFile ? (
@@ -104,11 +124,13 @@ export function FileUpload({
             </div>
             <div className="space-y-1">
               <p className="text-xl font-medium text-white">
-                Drag & drop your image here
+                Drag & drop your file here
               </p>
-              <p className="text-sm text-gray-400">
-                Support for JPG, PNG, WEBP (Max: 10MB)
-              </p>
+              {showSupportedTypes && (
+                <p className="text-sm text-gray-400">
+                  Supports all file types (Images, PDFs, Documents, etc.)
+                </p>
+              )}
             </div>
             <Button
               type="button"
@@ -122,12 +144,25 @@ export function FileUpload({
       ) : (
         <div className="relative overflow-hidden rounded-lg border border-gray-700">
           <div className="aspect-video w-full overflow-hidden bg-esrgan-black-light">
-            {preview && (
+            {isImageFile && preview ? (
               <img
                 src={preview}
                 alt="Preview"
                 className="h-full w-full object-contain"
               />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="rounded-full bg-esrgan-black p-4 mb-4">
+                  {getFileTypeIcon(selectedFile)}
+                </div>
+                <p className="text-gray-300">File selected: {selectedFile.name}</p>
+                {!isImageFile && (
+                  <p className="text-yellow-500 flex items-center mt-2">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    Preview not available for this file type
+                  </p>
+                )}
+              </div>
             )}
           </div>
           <div className="absolute right-2 top-2 z-10">
@@ -142,7 +177,7 @@ export function FileUpload({
           </div>
           <div className="flex items-center justify-between bg-esrgan-black-light p-3">
             <div className="flex items-center space-x-2">
-              <ImageIcon className="h-5 w-5 text-gray-400" />
+              {getFileTypeIcon(selectedFile)}
               <span className="text-sm font-medium text-gray-300 truncate max-w-[200px]">
                 {selectedFile.name}
               </span>
