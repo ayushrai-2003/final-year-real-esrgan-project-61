@@ -11,6 +11,8 @@ interface MetricsProps {
     accuracy: number;
     psnr: number;
     ssim: number;
+    plateDetectionAccuracy?: number;
+    plateRecognitionAccuracy?: number;
   }[];
   currentEpoch: number;
 }
@@ -43,6 +45,20 @@ const TrainingMetrics = ({ trainingData, currentEpoch }: MetricsProps) => {
       theme: {
         light: '#a855f7',
         dark: '#a855f7',
+      },
+    },
+    plateDetectionAccuracy: {
+      label: 'Plate Detection',
+      theme: {
+        light: '#f97316',
+        dark: '#f97316',
+      },
+    },
+    plateRecognitionAccuracy: {
+      label: 'Plate Recognition',
+      theme: {
+        light: '#06b6d4',
+        dark: '#06b6d4',
       },
     },
   };
@@ -92,6 +108,30 @@ const TrainingMetrics = ({ trainingData, currentEpoch }: MetricsProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* License Plate Specific Metrics */}
+      {trainingData.length > 0 && trainingData[0].plateDetectionAccuracy !== undefined && (
+        <Card className="bg-esrgan-black-light border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">License Plate Recognition Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer className="h-[300px]" config={config}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trainingData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="epoch" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <ChartTooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="plateDetectionAccuracy" name="Plate Detection" stroke="#f97316" dot={false} />
+                  <Line type="monotone" dataKey="plateRecognitionAccuracy" name="Plate Recognition" stroke="#06b6d4" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
