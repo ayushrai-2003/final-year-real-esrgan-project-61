@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,7 +128,7 @@ const Training = () => {
   };
 
   const handleStartTraining = () => {
-    if (!dataset && selectedDataset === '') {
+    if (!dataset && !selectedDataset) {
       toast.error('Please select or upload a dataset first');
       return;
     }
