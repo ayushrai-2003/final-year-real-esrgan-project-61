@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -20,7 +19,8 @@ import {
   ExternalLink, 
   BookOpen,
   Check,
-  FileText
+  FileText,
+  UploadCloud
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,6 @@ const Index = () => {
   const handleFileSelect = (file: File) => {
     setInputFile(file);
     
-    // Create preview URL for images
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -49,12 +48,10 @@ const Index = () => {
       };
       reader.readAsDataURL(file);
     } else {
-      // For non-image files, set a placeholder
       setInputPreviewUrl(null);
       toast.info(`Selected file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
     }
 
-    // Reset enhanced image when new input is selected
     setEnhancedImageUrl(null);
   };
 
@@ -66,16 +63,13 @@ const Index = () => {
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form fields
     if (!contactForm.name || !contactForm.email || !contactForm.message) {
       toast.error("Please fill in all required fields");
       return;
     }
     
-    // Process the form submission (in a real app, this would send the data to a server)
     toast.success("Thank you! Your message has been sent successfully.");
     
-    // Reset the form
     setContactForm({
       name: "",
       email: "",
@@ -107,7 +101,6 @@ const Index = () => {
       <Header />
       
       <main className="flex-1">
-        {/* Hero Section - Enhanced with better animations and CTA */}
         <section id="hero-section" className="relative overflow-hidden bg-hero-pattern py-20 md:py-28">
           <div className="absolute inset-0 bg-gradient-to-r from-esrgan-black to-transparent opacity-50"></div>
           <div className="container relative z-10">
@@ -140,12 +133,10 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Added decorative elements */}
           <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-esrgan-orange/10 rounded-full blur-3xl"></div>
           <div className="absolute top-20 right-10 w-72 h-72 bg-purple-500/5 rounded-full blur-3xl"></div>
         </section>
 
-        {/* Features Section - Enhanced with subtle animation */}
         <section className="py-20 bg-esrgan-black-dark relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,69,0,0.1),transparent_70%)]"></div>
           <div className="container relative z-10">
@@ -191,7 +182,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Upload and Process Section - Improved with more comprehensive file support */}
         <section id="upload-section" className="py-20 relative">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(255,69,0,0.1),transparent_70%)]"></div>
           <div className="container relative z-10">
@@ -205,7 +195,7 @@ const Index = () => {
 
               <div className="rounded-xl border border-gray-800 bg-esrgan-black-light p-8 shadow-lg">
                 <h3 className="mb-6 text-xl font-medium text-white flex items-center">
-                  <Upload className="mr-2 h-5 w-5 text-esrgan-orange" /> Upload Your File
+                  <UploadCloud className="mr-2 h-5 w-5 text-esrgan-orange" /> Upload Your File
                 </h3>
                 <FileUpload 
                   onFileSelect={handleFileSelect}
@@ -214,7 +204,6 @@ const Index = () => {
                   showSupportedTypes={true}
                 />
                 
-                {/* Processing Section with improved status indicators */}
                 {inputFile && (
                   <div className="mt-8 animate-fade-in">
                     <div className="flex items-center justify-between mb-4">
@@ -232,7 +221,6 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Results Section with improved comparison view */}
               {enhancedImageUrl && inputPreviewUrl && (
                 <div className="mt-10 space-y-6 animate-fade-in">
                   <div className="text-center">
@@ -263,7 +251,6 @@ const Index = () => {
                         size="lg"
                         className="bg-esrgan-orange hover:bg-esrgan-orange/80 shadow-lg hover:shadow-xl transition-all"
                         onClick={() => {
-                          // Create a download link
                           const a = document.createElement('a');
                           a.href = enhancedImageUrl;
                           a.download = 'enhanced-image.png';
@@ -285,7 +272,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Expanded About Section - Completely revamped with better organization and visuals */}
         <section id="about-section" className="py-20 bg-esrgan-black-dark relative">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,69,0,0.05),transparent_70%)]"></div>
           <div className="container relative z-10">
@@ -539,7 +525,6 @@ const Index = () => {
           </div>
         </section>
         
-        {/* Contact Section - Enhanced with better layout and interactive elements */}
         <section id="contact-section" className="py-20 relative">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(255,69,0,0.1),transparent_70%)]"></div>
           <div className="container relative z-10">
