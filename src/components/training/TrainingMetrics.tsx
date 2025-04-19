@@ -11,6 +11,11 @@ interface MetricsProps {
     accuracy: number;
     psnr: number;
     ssim: number;
+    lpips?: number;
+    sharpness?: number;
+    noiseReduction?: number;
+    colorFidelity?: number;
+    textureDetail?: number;
     plateDetectionAccuracy?: number;
     plateRecognitionAccuracy?: number;
   }[];
@@ -47,6 +52,41 @@ const TrainingMetrics = ({ trainingData, currentEpoch }: MetricsProps) => {
         dark: '#a855f7',
       },
     },
+    lpips: {
+      label: 'LPIPS',
+      theme: {
+        light: '#f59e0b',
+        dark: '#f59e0b',
+      },
+    },
+    sharpness: {
+      label: 'Sharpness',
+      theme: {
+        light: '#10b981',
+        dark: '#10b981',
+      },
+    },
+    noiseReduction: {
+      label: 'Noise Reduction',
+      theme: {
+        light: '#6366f1',
+        dark: '#6366f1',
+      },
+    },
+    colorFidelity: {
+      label: 'Color Fidelity',
+      theme: {
+        light: '#ec4899',
+        dark: '#ec4899',
+      },
+    },
+    textureDetail: {
+      label: 'Texture Detail',
+      theme: {
+        light: '#8b5cf6',
+        dark: '#8b5cf6',
+      },
+    },
     plateDetectionAccuracy: {
       label: 'Plate Detection',
       theme: {
@@ -62,6 +102,15 @@ const TrainingMetrics = ({ trainingData, currentEpoch }: MetricsProps) => {
       },
     },
   };
+
+  const hasImageQualityMetrics = trainingData.length > 0 && (
+    trainingData[0].sharpness !== undefined || 
+    trainingData[0].noiseReduction !== undefined || 
+    trainingData[0].colorFidelity !== undefined || 
+    trainingData[0].textureDetail !== undefined
+  );
+
+  const hasLpips = trainingData.length > 0 && trainingData[0].lpips !== undefined;
 
   return (
     <div className="space-y-6">
@@ -102,6 +151,7 @@ const TrainingMetrics = ({ trainingData, currentEpoch }: MetricsProps) => {
                   <Legend />
                   <Line type="monotone" dataKey="psnr" name="PSNR" stroke="#3b82f6" dot={false} />
                   <Line type="monotone" dataKey="ssim" name="SSIM" stroke="#a855f7" dot={false} />
+                  {hasLpips && <Line type="monotone" dataKey="lpips" name="LPIPS" stroke="#f59e0b" dot={false} />}
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -109,7 +159,31 @@ const TrainingMetrics = ({ trainingData, currentEpoch }: MetricsProps) => {
         </Card>
       </div>
 
-      {/* License Plate Specific Metrics */}
+      {hasImageQualityMetrics && (
+        <Card className="bg-esrgan-black-light border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Enhanced Image Quality Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer className="h-[300px]" config={config}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trainingData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="epoch" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <ChartTooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="sharpness" name="Sharpness" stroke="#10b981" dot={false} />
+                  <Line type="monotone" dataKey="noiseReduction" name="Noise Reduction" stroke="#6366f1" dot={false} />
+                  <Line type="monotone" dataKey="colorFidelity" name="Color Fidelity" stroke="#ec4899" dot={false} />
+                  <Line type="monotone" dataKey="textureDetail" name="Texture Detail" stroke="#8b5cf6" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      )}
+
       {trainingData.length > 0 && trainingData[0].plateDetectionAccuracy !== undefined && (
         <Card className="bg-esrgan-black-light border-gray-800">
           <CardHeader>

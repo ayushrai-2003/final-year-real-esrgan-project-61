@@ -11,11 +11,13 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { ArrowRight, Settings, Folders, BarChart, Play, PauseCircle, Save, Car, FileImage } from "lucide-react";
+import { ArrowRight, Settings, Folders, BarChart, Play, PauseCircle, Save, Car, FileImage, BarChart2, Sliders, Download, Layers } from "lucide-react";
 import { Toaster } from "sonner";
 import TrainingMetrics from '@/components/training/TrainingMetrics';
+import { useNavigate } from 'react-router-dom';
 
 const Training = () => {
+  const navigate = useNavigate();
   const [trainingStatus, setTrainingStatus] = useState('idle');
   const [dataset, setDataset] = useState<File | null>(null);
   const [epochs, setEpochs] = useState(100);
@@ -30,6 +32,11 @@ const Training = () => {
     accuracy: number;
     psnr: number;
     ssim: number;
+    lpips?: number;
+    sharpness?: number;
+    noiseReduction?: number;
+    colorFidelity?: number;
+    textureDetail?: number;
     plateDetectionAccuracy?: number;
     plateRecognitionAccuracy?: number;
   }>>([]);
@@ -37,17 +44,48 @@ const Training = () => {
     psnr: 26.8,
     ssim: 0.87,
     accuracy: 0.93,
+    lpips: 0.21,
+    sharpness: 0.85,
+    noiseReduction: 0.87,
+    colorFidelity: 0.92,
+    textureDetail: 0.89,
     plateDetectionAccuracy: 0.0,
     plateRecognitionAccuracy: 0.0
   });
-  const [selectedDataset, setSelectedDataset] = useState<'DIV2K' | 'DF2K' | 'INDIAN_LP' | 'AUTO_LP'>('DIV2K');
+  const [selectedDataset, setSelectedDataset] = useState<'DIV2K' | 'DF2K' | 'FLICKR2K' | 'OST' | 'INDIAN_LP' | 'AUTO_LP'>('DIV2K');
   const [modelType, setModelType] = useState<'general' | 'license-plate'>('general');
+  
+  // Enhanced settings for image quality
+  const [enhancementSettings, setEnhancementSettings] = useState({
+    sharpnessEnhancement: 0.5,
+    noiseReduction: 0.5,
+    colorCorrection: true,
+    texturePreservation: 0.7,
+    contrastEnhancement: 0.3,
+    upscalingFactor: 4,
+    usePerceptualLoss: true,
+    advancedDegradation: true
+  });
+
+  const updateEnhancementSetting = (setting: string, value: number | boolean) => {
+    setEnhancementSettings(prev => ({
+      ...prev,
+      [setting]: value
+    }));
+  };
 
   const generateTrainingData = (epoch: number) => {
     const baseLoss = 2.5 * Math.exp(-epoch / 50);
     const baseAccuracy = 0.5 + 0.45 * (1 - Math.exp(-epoch / 30));
     const basePSNR = 20 + 10 * (1 - Math.exp(-epoch / 40));
     const baseSSIM = 0.5 + 0.45 * (1 - Math.exp(-epoch / 35));
+    
+    // New metrics for enhanced image quality
+    const baseLPIPS = 0.5 - 0.4 * (1 - Math.exp(-epoch / 45));
+    const baseSharpness = 0.3 + 0.6 * (1 - Math.exp(-epoch / 35)) * enhancementSettings.sharpnessEnhancement;
+    const baseNoiseReduction = 0.2 + 0.7 * (1 - Math.exp(-epoch / 40)) * enhancementSettings.noiseReduction;
+    const baseColorFidelity = 0.4 + 0.5 * (1 - Math.exp(-epoch / 30)) * (enhancementSettings.colorCorrection ? 1 : 0.7);
+    const baseTextureDetail = 0.3 + 0.6 * (1 - Math.exp(-epoch / 38)) * enhancementSettings.texturePreservation;
 
     const noise = () => (Math.random() - 0.5) * 0.1;
     
@@ -57,6 +95,11 @@ const Training = () => {
       accuracy: number;
       psnr: number;
       ssim: number;
+      lpips?: number;
+      sharpness?: number;
+      noiseReduction?: number;
+      colorFidelity?: number;
+      textureDetail?: number;
       plateDetectionAccuracy?: number;
       plateRecognitionAccuracy?: number;
     } = {
@@ -65,6 +108,11 @@ const Training = () => {
       accuracy: Math.min(1, Math.max(0, baseAccuracy + noise())),
       psnr: Math.max(0, basePSNR + noise() * 2),
       ssim: Math.min(1, Math.max(0, baseSSIM + noise())),
+      lpips: Math.min(1, Math.max(0, baseLPIPS + noise())),
+      sharpness: Math.min(1, Math.max(0, baseSharpness + noise())),
+      noiseReduction: Math.min(1, Math.max(0, baseNoiseReduction + noise())),
+      colorFidelity: Math.min(1, Math.max(0, baseColorFidelity + noise())),
+      textureDetail: Math.min(1, Math.max(0, baseTextureDetail + noise())),
     };
     
     if (modelType === 'license-plate') {
@@ -93,6 +141,11 @@ const Training = () => {
               ...prevMetrics,
               generateTrainingData(currentEpoch),
             ]);
+            
+            if (newProgress === 100) {
+              setTrainingStatus('completed');
+              toast.success('Training completed successfully!');
+            }
           }
           return newProgress >= 100 ? 100 : newProgress;
         });
@@ -100,7 +153,7 @@ const Training = () => {
 
       return () => clearInterval(interval);
     }
-  }, [trainingStatus, epochs, modelType]);
+  }, [trainingStatus, epochs, modelType, enhancementSettings]);
 
   useEffect(() => {
     if (modelType === 'license-plate') {
@@ -108,6 +161,11 @@ const Training = () => {
         psnr: 28.3,
         ssim: 0.91,
         accuracy: 0.88,
+        lpips: 0.18,
+        sharpness: 0.87,
+        noiseReduction: 0.89,
+        colorFidelity: 0.90,
+        textureDetail: 0.85,
         plateDetectionAccuracy: 0.89,
         plateRecognitionAccuracy: 0.85
       });
@@ -116,6 +174,11 @@ const Training = () => {
         psnr: 26.8,
         ssim: 0.87,
         accuracy: 0.93,
+        lpips: 0.21,
+        sharpness: 0.85,
+        noiseReduction: 0.87,
+        colorFidelity: 0.92,
+        textureDetail: 0.89,
         plateDetectionAccuracy: 0.0,
         plateRecognitionAccuracy: 0.0
       });
@@ -136,7 +199,7 @@ const Training = () => {
     setTrainingStatus('training');
     setTrainingProgress(0);
     setTrainingMetrics([]);
-    toast.success(`Training started with ${selectedDataset} dataset`);
+    toast.success(`Training started with ${selectedDataset} dataset and optimized enhancement settings`);
   };
 
   const handleStopTraining = () => {
@@ -152,36 +215,48 @@ const Training = () => {
     toast.success('Model saved successfully!');
   };
 
-  const handleDatasetSelect = (dataset: 'DIV2K' | 'DF2K' | 'INDIAN_LP' | 'AUTO_LP') => {
+  const handleDatasetSelect = (dataset: 'DIV2K' | 'DF2K' | 'FLICKR2K' | 'OST' | 'INDIAN_LP' | 'AUTO_LP') => {
     setSelectedDataset(dataset);
     if (dataset === 'INDIAN_LP' || dataset === 'AUTO_LP') {
       setModelType('license-plate');
       toast.info('Switched to license plate recognition mode');
+    } else {
+      setModelType('general');
     }
     toast.success(`Dataset ${dataset} selected for training`);
   };
 
   const startTesting = () => {
-    toast.info('Starting test process...');
+    toast.info('Starting test process with advanced quality metrics...');
     setTimeout(() => {
       if (modelType === 'license-plate') {
         setTestingMetrics({
-          psnr: 28.3,
-          ssim: 0.91,
-          accuracy: 0.88,
-          plateDetectionAccuracy: 0.89,
-          plateRecognitionAccuracy: 0.85
+          psnr: 28.3 + (enhancementSettings.sharpnessEnhancement - 0.5) * 2,
+          ssim: 0.91 + (enhancementSettings.texturePreservation - 0.7) * 0.05,
+          accuracy: 0.88 + (enhancementSettings.noiseReduction - 0.5) * 0.03,
+          lpips: 0.18 - (enhancementSettings.sharpnessEnhancement - 0.5) * 0.04,
+          sharpness: 0.87 + (enhancementSettings.sharpnessEnhancement - 0.5) * 0.1,
+          noiseReduction: 0.89 + (enhancementSettings.noiseReduction - 0.5) * 0.08,
+          colorFidelity: 0.90 + (enhancementSettings.colorCorrection ? 0.04 : -0.04),
+          textureDetail: 0.85 + (enhancementSettings.texturePreservation - 0.7) * 0.15,
+          plateDetectionAccuracy: 0.89 + (enhancementSettings.contrastEnhancement - 0.3) * 0.05,
+          plateRecognitionAccuracy: 0.85 + (enhancementSettings.sharpnessEnhancement - 0.5) * 0.06
         });
       } else {
         setTestingMetrics({
-          psnr: 26.8,
-          ssim: 0.87,
-          accuracy: 0.93,
+          psnr: 26.8 + (enhancementSettings.sharpnessEnhancement - 0.5) * 2,
+          ssim: 0.87 + (enhancementSettings.texturePreservation - 0.7) * 0.05,
+          accuracy: 0.93 + (enhancementSettings.noiseReduction - 0.5) * 0.03,
+          lpips: 0.21 - (enhancementSettings.sharpnessEnhancement - 0.5) * 0.04,
+          sharpness: 0.85 + (enhancementSettings.sharpnessEnhancement - 0.5) * 0.1,
+          noiseReduction: 0.87 + (enhancementSettings.noiseReduction - 0.5) * 0.08,
+          colorFidelity: 0.92 + (enhancementSettings.colorCorrection ? 0.04 : -0.04),
+          textureDetail: 0.89 + (enhancementSettings.texturePreservation - 0.7) * 0.15,
           plateDetectionAccuracy: 0.0,
           plateRecognitionAccuracy: 0.0
         });
       }
-      toast.success('Testing completed successfully!');
+      toast.success('Testing completed with comprehensive quality metrics!');
     }, 2000);
   };
 
@@ -191,6 +266,10 @@ const Training = () => {
         return 'DIV2K provides 800 training images and 200 validation images in 2K resolution.';
       case 'DF2K':
         return 'DF2K combines DIV2K and Flickr2K for a total of 3000 high-quality training images.';
+      case 'FLICKR2K':
+        return 'FLICKR2K contains 2650 high-resolution images sourced from Flickr, optimized for real-world scenarios.';
+      case 'OST':
+        return 'Corrupted Images Training Set (OST) contains 10,000+ deliberately degraded images to train robust enhancement models.';
       case 'INDIAN_LP':
         return 'INDIAN Vehicle License Plate dataset contains over 3000 images of Indian license plates in various lighting and weather conditions.';
       case 'AUTO_LP':
@@ -211,14 +290,14 @@ const Training = () => {
             Real-ESRGAN <span className="gradient-text">Training Dashboard</span>
           </h1>
           <p className="mx-auto mb-12 max-w-2xl text-lg text-gray-300 text-center">
-            Train your own Real-ESRGAN model for image enhancement with high-quality datasets, including license plate recognition
+            Train your own Real-ESRGAN model with advanced image enhancement optimization for superior quality results
           </p>
           
           <Tabs defaultValue="training" className="max-w-5xl mx-auto">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="training">Training</TabsTrigger>
               <TabsTrigger value="testing">Testing</TabsTrigger>
-              <TabsTrigger value="process">Process Overview</TabsTrigger>
+              <TabsTrigger value="enhancer">Image Enhancer</TabsTrigger>
               <TabsTrigger value="datasets">Datasets</TabsTrigger>
             </TabsList>
             
@@ -324,6 +403,73 @@ const Training = () => {
                         <span className="w-12 text-center text-gray-300">{validationSplit * 100}%</span>
                       </div>
                     </div>
+
+                    <div className="pt-2 border-t border-gray-800">
+                      <h4 className="text-sm font-medium text-esrgan-orange mb-2">Enhanced Quality Settings</h4>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="sharpnessEnhancement" className="text-gray-300">Sharpness Enhancement</Label>
+                        <div className="flex items-center space-x-2">
+                          <Slider
+                            id="sharpnessEnhancement"
+                            value={[enhancementSettings.sharpnessEnhancement * 100]}
+                            min={0}
+                            max={100}
+                            step={5}
+                            onValueChange={(value) => updateEnhancementSetting('sharpnessEnhancement', value[0] / 100)}
+                          />
+                          <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.sharpnessEnhancement * 100)}%</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="noiseReduction" className="text-gray-300">Noise Reduction</Label>
+                        <div className="flex items-center space-x-2">
+                          <Slider
+                            id="noiseReduction"
+                            value={[enhancementSettings.noiseReduction * 100]}
+                            min={0}
+                            max={100}
+                            step={5}
+                            onValueChange={(value) => updateEnhancementSetting('noiseReduction', value[0] / 100)}
+                          />
+                          <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.noiseReduction * 100)}%</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="texturePreservation" className="text-gray-300">Texture Preservation</Label>
+                        <div className="flex items-center space-x-2">
+                          <Slider
+                            id="texturePreservation"
+                            value={[enhancementSettings.texturePreservation * 100]}
+                            min={0}
+                            max={100}
+                            step={5}
+                            onValueChange={(value) => updateEnhancementSetting('texturePreservation', value[0] / 100)}
+                          />
+                          <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.texturePreservation * 100)}%</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 my-2">
+                        <Switch
+                          id="colorCorrection"
+                          checked={enhancementSettings.colorCorrection}
+                          onCheckedChange={(checked) => updateEnhancementSetting('colorCorrection', checked)}
+                        />
+                        <Label htmlFor="colorCorrection" className="text-gray-300">Enable Color Correction</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="usePerceptualLoss"
+                          checked={enhancementSettings.usePerceptualLoss}
+                          onCheckedChange={(checked) => updateEnhancementSetting('usePerceptualLoss', checked)}
+                        />
+                        <Label htmlFor="usePerceptualLoss" className="text-gray-300">Use Perceptual Loss</Label>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
                 
@@ -341,7 +487,7 @@ const Training = () => {
                       <div className="grid gap-4">
                         <FileUpload
                           onFileSelect={handleDatasetUpload}
-                          accept=".zip,.tar,.gz,.jpg,.jpeg,.png,.bmp,.webp"
+                          accept=".zip,.tar,.gz,.jpg,.jpeg,.png,.bmp,.webp,.heic,.heif,.tiff"
                         />
                         {dataset && (
                           <div className="bg-esrgan-black p-3 rounded-md border border-gray-800">
@@ -404,7 +550,7 @@ const Training = () => {
                       {trainingStatus === 'idle' || trainingStatus === 'stopped' || trainingStatus === 'completed' ? (
                         <Button 
                           onClick={handleStartTraining} 
-                          disabled={!dataset}
+                          disabled={!dataset && !selectedDataset}
                           className="bg-esrgan-orange hover:bg-esrgan-orange/80"
                         >
                           <Play className="mr-2 h-4 w-4" />
@@ -429,6 +575,15 @@ const Training = () => {
                         <Save className="mr-2 h-4 w-4" />
                         Save Model
                       </Button>
+                      
+                      <Button
+                        onClick={() => navigate('/upload')}
+                        variant="outline"
+                        className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                      >
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                        Try Model
+                      </Button>
                     </CardFooter>
                   </Card>
                 </div>
@@ -439,7 +594,7 @@ const Training = () => {
               <Card className="bg-esrgan-black-light border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-white">Model Testing</CardTitle>
-                  <CardDescription>Evaluate your trained model's performance</CardDescription>
+                  <CardDescription>Evaluate your trained model's performance with comprehensive metrics</CardDescription>
                 </CardHeader>
                 
                 <CardContent>
@@ -457,10 +612,57 @@ const Training = () => {
                         </div>
                         <FileUpload
                           onFileSelect={() => {}}
-                          accept=".zip,.tar,.gz,.jpg,.jpeg,.png,.bmp,.webp"
+                          accept=".zip,.tar,.gz,.jpg,.jpeg,.png,.bmp,.webp,.heic,.heif,.tiff"
                         />
                       </div>
-                      <Button className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80">
+                      
+                      <div className="space-y-3 pt-4 border-t border-gray-800">
+                        <h4 className="text-sm font-medium text-esrgan-orange">Testing Configuration</h4>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor="upscalingFactor" className="text-gray-300">Upscaling Factor</Label>
+                          <div className="flex items-center space-x-2">
+                            <Slider
+                              id="upscalingFactor"
+                              value={[enhancementSettings.upscalingFactor]}
+                              min={2}
+                              max={8}
+                              step={1}
+                              onValueChange={(value) => updateEnhancementSetting('upscalingFactor', value[0])}
+                            />
+                            <span className="w-12 text-center text-gray-300">×{enhancementSettings.upscalingFactor}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor="contrastEnhancement" className="text-gray-300">Contrast Enhancement</Label>
+                          <div className="flex items-center space-x-2">
+                            <Slider
+                              id="contrastEnhancement"
+                              value={[enhancementSettings.contrastEnhancement * 100]}
+                              min={0}
+                              max={100}
+                              step={5}
+                              onValueChange={(value) => updateEnhancementSetting('contrastEnhancement', value[0] / 100)}
+                            />
+                            <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.contrastEnhancement * 100)}%</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="advancedDegradation"
+                            checked={enhancementSettings.advancedDegradation}
+                            onCheckedChange={(checked) => updateEnhancementSetting('advancedDegradation', checked)}
+                          />
+                          <Label htmlFor="advancedDegradation" className="text-gray-300">Use Advanced Degradation Models</Label>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80"
+                        onClick={startTesting}
+                      >
                         Start Testing
                       </Button>
                     </div>
@@ -468,20 +670,48 @@ const Training = () => {
                     <div className="md:col-span-2 space-y-4">
                       <h3 className="text-lg font-medium text-white">Testing Metrics</h3>
                       
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-4 gap-4">
                         <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
                           <div className="text-gray-400 text-sm">PSNR</div>
-                          <div className="text-2xl font-bold text-white">{testingMetrics.psnr} dB</div>
+                          <div className="text-2xl font-bold text-white">{testingMetrics.psnr.toFixed(1)} dB</div>
                         </div>
                         
                         <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
                           <div className="text-gray-400 text-sm">SSIM</div>
-                          <div className="text-2xl font-bold text-white">{testingMetrics.ssim}</div>
+                          <div className="text-2xl font-bold text-white">{testingMetrics.ssim.toFixed(2)}</div>
+                        </div>
+                        
+                        <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
+                          <div className="text-gray-400 text-sm">LPIPS</div>
+                          <div className="text-2xl font-bold text-white">{testingMetrics.lpips.toFixed(2)}</div>
+                          <div className="text-xs text-gray-400">(lower is better)</div>
                         </div>
                         
                         <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
                           <div className="text-gray-400 text-sm">Accuracy</div>
                           <div className="text-2xl font-bold text-white">{(testingMetrics.accuracy * 100).toFixed(1)}%</div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
+                          <div className="text-gray-400 text-sm">Sharpness</div>
+                          <div className="text-2xl font-bold text-white">{(testingMetrics.sharpness * 100).toFixed(1)}%</div>
+                        </div>
+                        
+                        <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
+                          <div className="text-gray-400 text-sm">Noise Reduction</div>
+                          <div className="text-2xl font-bold text-white">{(testingMetrics.noiseReduction * 100).toFixed(1)}%</div>
+                        </div>
+                        
+                        <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
+                          <div className="text-gray-400 text-sm">Color Fidelity</div>
+                          <div className="text-2xl font-bold text-white">{(testingMetrics.colorFidelity * 100).toFixed(1)}%</div>
+                        </div>
+                        
+                        <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
+                          <div className="text-gray-400 text-sm">Texture Detail</div>
+                          <div className="text-2xl font-bold text-white">{(testingMetrics.textureDetail * 100).toFixed(1)}%</div>
                         </div>
                       </div>
                       
@@ -504,18 +734,26 @@ const Training = () => {
                         {modelType === 'license-plate' ? (
                           <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
                             <p className="text-gray-300">Model successfully detected <span className="text-white font-medium">{(testingMetrics.plateDetectionAccuracy * 100).toFixed(1)}%</span> of license plates and correctly recognized <span className="text-white font-medium">{(testingMetrics.plateRecognitionAccuracy * 100).toFixed(1)}%</span> of characters.</p>
-                            <p className="text-gray-300 mt-2">Enhanced images show <span className="text-white font-medium">{(testingMetrics.psnr).toFixed(1)}dB</span> PSNR improvement and <span className="text-white font-medium">{(testingMetrics.ssim * 100).toFixed(1)}%</span> structural similarity.</p>
+                            <p className="text-gray-300 mt-2">Enhanced images show <span className="text-white font-medium">{(testingMetrics.psnr).toFixed(1)}dB</span> PSNR improvement, <span className="text-white font-medium">{(testingMetrics.ssim * 100).toFixed(1)}%</span> structural similarity, and <span className="text-white font-medium">{(testingMetrics.sharpness * 100).toFixed(1)}%</span> sharpness enhancement.</p>
                           </div>
                         ) : (
                           <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
                             <p className="text-gray-300">Model achieved <span className="text-white font-medium">{(testingMetrics.accuracy * 100).toFixed(1)}%</span> accuracy with <span className="text-white font-medium">{(testingMetrics.psnr).toFixed(1)}dB</span> PSNR and <span className="text-white font-medium">{(testingMetrics.ssim * 100).toFixed(1)}%</span> structural similarity.</p>
+                            <p className="text-gray-300 mt-2">Image quality metrics show <span className="text-white font-medium">{(testingMetrics.sharpness * 100).toFixed(1)}%</span> sharpness improvement, <span className="text-white font-medium">{(testingMetrics.noiseReduction * 100).toFixed(1)}%</span> noise reduction, and <span className="text-white font-medium">{(testingMetrics.textureDetail * 100).toFixed(1)}%</span> texture preservation.</p>
                           </div>
                         )}
                       </div>
 
-                      <div className="h-64 bg-esrgan-black-dark rounded-md p-4">
-                        <div className="text-center text-gray-400 py-24">
-                          Test results visualization would be displayed here
+                      <div className="h-64 bg-esrgan-black-dark rounded-md p-4 flex items-center justify-center">
+                        <div className="text-center space-y-2">
+                          <BarChart2 className="h-12 w-12 mx-auto text-esrgan-orange opacity-50" />
+                          <div className="text-gray-400">
+                            Advanced quality metrics visualization would be displayed here
+                          </div>
+                          <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                            <Download className="mr-2 h-4 w-4" />
+                            Export Results
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -524,84 +762,265 @@ const Training = () => {
               </Card>
             </TabsContent>
             
-            <TabsContent value="process" className="mt-6">
+            <TabsContent value="enhancer" className="mt-6">
               <Card className="bg-esrgan-black-light border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-white">Training Process Overview</CardTitle>
-                  <CardDescription>Understanding the Real-ESRGAN training workflow for images and license plates</CardDescription>
+                  <CardTitle className="text-white">Image Enhancement Settings</CardTitle>
+                  <CardDescription>Fine-tune advanced parameters for optimal image quality enhancement</CardDescription>
                 </CardHeader>
                 
                 <CardContent>
-                  <div className="grid gap-6">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">1. Real-ESRGAN Technology</h3>
-                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
-                        <p className="text-gray-300">
-                          Real-ESRGAN is an enhanced version of ESRGAN that introduces:
-                        </p>
-                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300 ml-4">
-                          <li>Pure synthetic data training scheme</li>
-                          <li>High-order degradation modeling</li>
-                          <li>U-Net discriminator with spectral normalization</li>
-                          <li>Enhanced perceptual loss and improved sharpness</li>
-                          <li>Specialized pipeline for license plate enhancement and recognition</li>
-                        </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <h3 className="flex items-center text-lg font-medium text-white">
+                          <Sliders className="mr-2 h-5 w-5 text-esrgan-orange" />
+                          Core Enhancement Parameters
+                        </h3>
+                        
+                        <div className="space-y-3 p-4 bg-esrgan-black rounded-md border border-gray-800">
+                          <div className="space-y-2">
+                            <Label htmlFor="sharpnessEnhancement2" className="text-gray-300">Sharpness Enhancement</Label>
+                            <div className="flex items-center space-x-2">
+                              <Slider
+                                id="sharpnessEnhancement2"
+                                value={[enhancementSettings.sharpnessEnhancement * 100]}
+                                min={0}
+                                max={100}
+                                step={5}
+                                onValueChange={(value) => updateEnhancementSetting('sharpnessEnhancement', value[0] / 100)}
+                              />
+                              <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.sharpnessEnhancement * 100)}%</span>
+                            </div>
+                            <p className="text-xs text-gray-400">Controls edge definition and detail clarity</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="noiseReduction2" className="text-gray-300">Noise Reduction</Label>
+                            <div className="flex items-center space-x-2">
+                              <Slider
+                                id="noiseReduction2"
+                                value={[enhancementSettings.noiseReduction * 100]}
+                                min={0}
+                                max={100}
+                                step={5}
+                                onValueChange={(value) => updateEnhancementSetting('noiseReduction', value[0] / 100)}
+                              />
+                              <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.noiseReduction * 100)}%</span>
+                            </div>
+                            <p className="text-xs text-gray-400">Removes unwanted artifacts while preserving detail</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="texturePreservation2" className="text-gray-300">Texture Preservation</Label>
+                            <div className="flex items-center space-x-2">
+                              <Slider
+                                id="texturePreservation2"
+                                value={[enhancementSettings.texturePreservation * 100]}
+                                min={0}
+                                max={100}
+                                step={5}
+                                onValueChange={(value) => updateEnhancementSetting('texturePreservation', value[0] / 100)}
+                              />
+                              <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.texturePreservation * 100)}%</span>
+                            </div>
+                            <p className="text-xs text-gray-400">Maintains natural texture patterns in enhanced images</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="contrastEnhancement2" className="text-gray-300">Contrast Enhancement</Label>
+                            <div className="flex items-center space-x-2">
+                              <Slider
+                                id="contrastEnhancement2"
+                                value={[enhancementSettings.contrastEnhancement * 100]}
+                                min={0}
+                                max={100}
+                                step={5}
+                                onValueChange={(value) => updateEnhancementSetting('contrastEnhancement', value[0] / 100)}
+                              />
+                              <span className="w-12 text-center text-gray-300">{Math.round(enhancementSettings.contrastEnhancement * 100)}%</span>
+                            </div>
+                            <p className="text-xs text-gray-400">Improves image depth and detail visibility</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <h3 className="flex items-center text-lg font-medium text-white">
+                          <Layers className="mr-2 h-5 w-5 text-esrgan-orange" />
+                          Advanced Settings
+                        </h3>
+                        
+                        <div className="space-y-3 p-4 bg-esrgan-black rounded-md border border-gray-800">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="colorCorrection2"
+                                checked={enhancementSettings.colorCorrection}
+                                onCheckedChange={(checked) => updateEnhancementSetting('colorCorrection', checked)}
+                              />
+                              <div>
+                                <Label htmlFor="colorCorrection2" className="text-gray-300">Color Correction</Label>
+                                <p className="text-xs text-gray-400">Improves color accuracy and vibrancy</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="usePerceptualLoss2"
+                                checked={enhancementSettings.usePerceptualLoss}
+                                onCheckedChange={(checked) => updateEnhancementSetting('usePerceptualLoss', checked)}
+                              />
+                              <div>
+                                <Label htmlFor="usePerceptualLoss2" className="text-gray-300">Perceptual Loss</Label>
+                                <p className="text-xs text-gray-400">Uses human perception metrics for better results</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="advancedDegradation2"
+                                checked={enhancementSettings.advancedDegradation}
+                                onCheckedChange={(checked) => updateEnhancementSetting('advancedDegradation', checked)}
+                              />
+                              <div>
+                                <Label htmlFor="advancedDegradation2" className="text-gray-300">Advanced Degradation Modeling</Label>
+                                <p className="text-xs text-gray-400">Better handles complex image imperfections</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="upscalingFactor2" className="text-gray-300">Upscaling Factor</Label>
+                            <div className="flex items-center space-x-2">
+                              <Slider
+                                id="upscalingFactor2"
+                                value={[enhancementSettings.upscalingFactor]}
+                                min={2}
+                                max={8}
+                                step={1}
+                                onValueChange={(value) => updateEnhancementSetting('upscalingFactor', value[0])}
+                              />
+                              <span className="w-12 text-center text-gray-300">×{enhancementSettings.upscalingFactor}</span>
+                            </div>
+                            <p className="text-xs text-gray-400">Resolution multiplier for output images</p>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 flex gap-2">
+                          <Button
+                            className="flex-1 bg-esrgan-orange hover:bg-esrgan-orange/80"
+                            onClick={() => {
+                              toast.success("Settings applied to enhancement model");
+                              navigate('/upload');
+                            }}
+                          >
+                            Apply Settings & Try Model
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                            onClick={() => {
+                              setEnhancementSettings({
+                                sharpnessEnhancement: 0.5,
+                                noiseReduction: 0.5,
+                                colorCorrection: true,
+                                texturePreservation: 0.7,
+                                contrastEnhancement: 0.3,
+                                upscalingFactor: 4,
+                                usePerceptualLoss: true,
+                                advancedDegradation: true
+                              });
+                              toast.info("Reset to default settings");
+                            }}
+                          >
+                            Reset to Defaults
+                          </Button>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">2. License Plate Processing</h3>
-                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
-                        <p className="text-gray-300">
-                          The license plate recognition pipeline involves:
-                        </p>
-                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300 ml-4">
-                          <li>Super-resolution enhancement of low-quality vehicle images</li>
-                          <li>Plate detection using specialized region proposal networks</li>
-                          <li>Character segmentation and recognition with OCR</li>
-                          <li>Special handling of different plate formats across various countries</li>
-                          <li>Support for various lighting conditions and viewing angles</li>
-                        </ul>
+                    
+                    <div className="space-y-6">
+                      <h3 className="text-lg font-medium text-white">Enhancement Preview</h3>
+                      
+                      <div className="h-80 bg-esrgan-black-dark rounded-md p-4 flex items-center justify-center">
+                        <div className="text-center space-y-4">
+                          <div className="rounded-full bg-esrgan-black-light p-6 mx-auto">
+                            <FileImage className="h-12 w-12 text-esrgan-orange opacity-70" />
+                          </div>
+                          <p className="text-gray-300">Upload an image to see the enhancement preview</p>
+                          <FileUpload 
+                            onFileSelect={() => {}}
+                            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff,image/bmp,image/gif"
+                          />
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">3. Training Process</h3>
-                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
-                        <p className="text-gray-300">
-                          The Real-ESRGAN training process involves:
-                        </p>
-                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300 ml-4">
-                          <li>Synthetic degradation pipeline for realistic training data</li>
-                          <li>Second-order degradation modeling for better restoration</li>
-                          <li>Enhanced network architecture with improved stability</li>
-                          <li>Training with mixed synthetic and real-world data</li>
-                          <li>Special augmentation techniques for license plate images</li>
-                        </ul>
+                      
+                      <div className="bg-esrgan-black p-4 rounded-md border border-gray-800">
+                        <h4 className="text-white font-medium mb-2">Current Enhancement Profile</h4>
+                        
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Focus on Sharpness:</span>
+                            <span className="text-gray-300">{enhancementSettings.sharpnessEnhancement > 0.7 ? 'High' : enhancementSettings.sharpnessEnhancement > 0.4 ? 'Medium' : 'Low'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Noise Reduction Level:</span>
+                            <span className="text-gray-300">{enhancementSettings.noiseReduction > 0.7 ? 'High' : enhancementSettings.noiseReduction > 0.4 ? 'Medium' : 'Low'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Texture Detail:</span>
+                            <span className="text-gray-300">{enhancementSettings.texturePreservation > 0.7 ? 'High' : enhancementSettings.texturePreservation > 0.4 ? 'Medium' : 'Low'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Color Correction:</span>
+                            <span className="text-gray-300">{enhancementSettings.colorCorrection ? 'Enabled' : 'Disabled'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Upscaling:</span>
+                            <span className="text-gray-300">×{enhancementSettings.upscalingFactor}</span>
+                          </div>
+                          
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Advanced Features:</span>
+                            <span className="text-gray-300">
+                              {[
+                                enhancementSettings.usePerceptualLoss ? 'Perceptual Loss' : '',
+                                enhancementSettings.advancedDegradation ? 'Adv. Degradation' : ''
+                              ].filter(Boolean).join(', ') || 'None'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 text-sm text-gray-400">
+                          <p>This profile is optimized for {enhancementSettings.sharpnessEnhancement > 0.6 && enhancementSettings.texturePreservation > 0.6 ? 'high-detail images with preserved textures' : 
+                            enhancementSettings.noiseReduction > 0.6 ? 'noisy images requiring cleanup' : 
+                            'balanced enhancement of general photos'}.</p>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">4. Evaluation</h3>
-                      <div className="rounded-lg bg-esrgan-black p-4 border border-gray-800">
-                        <p className="text-gray-300">
-                          Model evaluation includes both quantitative metrics (PSNR, SSIM) and 
-                          qualitative assessment of restored images, with particular focus on:
-                        </p>
-                        <ul className="list-disc list-inside mt-2 space-y-2 text-gray-300 ml-4">
-                          <li>Texture quality and sharpness</li>
-                          <li>Artifact suppression</li>
-                          <li>Color fidelity</li>
-                          <li>Character recognition accuracy (for license plates)</li>
-                          <li>Overall perceptual quality</li>
-                        </ul>
-                      </div>
+                      
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={() => navigate('/upload')}
+                      >
+                        Go to Image Upload Page
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-
+            
             <TabsContent value="datasets" className="mt-6">
               <Card className="bg-esrgan-black-light border-gray-800">
                 <CardHeader>
@@ -617,7 +1036,7 @@ const Training = () => {
                         <Button 
                           variant={selectedDataset === 'DIV2K' ? 'default' : 'outline'}
                           className={selectedDataset === 'DIV2K' ? 'bg-esrgan-orange w-full' : 'border-gray-700 w-full'}
-                          onClick={() => setSelectedDataset('DIV2K')}
+                          onClick={() => handleDatasetSelect('DIV2K')}
                         >
                           <FileImage className="mr-2 h-4 w-4" />
                           DIV2K Dataset
@@ -635,7 +1054,7 @@ const Training = () => {
                         <Button 
                           variant={selectedDataset === 'DF2K' ? 'default' : 'outline'}
                           className={selectedDataset === 'DF2K' ? 'bg-esrgan-orange w-full' : 'border-gray-700 w-full'}
-                          onClick={() => setSelectedDataset('DF2K')}
+                          onClick={() => handleDatasetSelect('DF2K')}
                         >
                           <FileImage className="mr-2 h-4 w-4" />
                           DF2K Dataset
@@ -648,6 +1067,42 @@ const Training = () => {
                           </p>
                         </div>
                       </div>
+                      
+                      <div className="space-y-3">
+                        <Button 
+                          variant={selectedDataset === 'FLICKR2K' ? 'default' : 'outline'}
+                          className={selectedDataset === 'FLICKR2K' ? 'bg-esrgan-orange w-full' : 'border-gray-700 w-full'}
+                          onClick={() => handleDatasetSelect('FLICKR2K')}
+                        >
+                          <FileImage className="mr-2 h-4 w-4" />
+                          FLICKR2K Dataset
+                        </Button>
+                        
+                        <div className={`bg-esrgan-black p-3 rounded-md border ${selectedDataset === 'FLICKR2K' ? 'border-esrgan-orange' : 'border-gray-800'} text-sm`}>
+                          <p className="text-gray-300">
+                            FLICKR2K contains 2650 high-resolution images sourced from Flickr.
+                            Excellent for real-world photo enhancement scenarios.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <Button 
+                          variant={selectedDataset === 'OST' ? 'default' : 'outline'}
+                          className={selectedDataset === 'OST' ? 'bg-esrgan-orange w-full' : 'border-gray-700 w-full'}
+                          onClick={() => handleDatasetSelect('OST')}
+                        >
+                          <FileImage className="mr-2 h-4 w-4" />
+                          Corrupted Image Training Set (OST)
+                        </Button>
+                        
+                        <div className={`bg-esrgan-black p-3 rounded-md border ${selectedDataset === 'OST' ? 'border-esrgan-orange' : 'border-gray-800'} text-sm`}>
+                          <p className="text-gray-300">
+                            Contains 10,000+ deliberately degraded images to train robust enhancement models.
+                            Focuses on challenging real-world degradation patterns.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="space-y-4">
@@ -657,10 +1112,7 @@ const Training = () => {
                         <Button 
                           variant={selectedDataset === 'INDIAN_LP' ? 'default' : 'outline'}
                           className={selectedDataset === 'INDIAN_LP' ? 'bg-esrgan-orange w-full' : 'border-gray-700 w-full'}
-                          onClick={() => {
-                            setSelectedDataset('INDIAN_LP');
-                            setModelType('license-plate');
-                          }}
+                          onClick={() => handleDatasetSelect('INDIAN_LP')}
                         >
                           <Car className="mr-2 h-4 w-4" />
                           INDIAN Vehicle License Plate
@@ -678,10 +1130,7 @@ const Training = () => {
                         <Button 
                           variant={selectedDataset === 'AUTO_LP' ? 'default' : 'outline'}
                           className={selectedDataset === 'AUTO_LP' ? 'bg-esrgan-orange w-full' : 'border-gray-700 w-full'}
-                          onClick={() => {
-                            setSelectedDataset('AUTO_LP');
-                            setModelType('license-plate');
-                          }}
+                          onClick={() => handleDatasetSelect('AUTO_LP')}
                         >
                           <Car className="mr-2 h-4 w-4" />
                           AUTOMATIC LICENSE PLATE
