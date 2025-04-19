@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from "react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { TrainingMetrics } from "@/components/training/TrainingMetrics";
+import TrainingMetrics from "@/components/training/TrainingMetrics";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Input } from "@/components/ui/input";
@@ -51,7 +50,6 @@ const Training = () => {
     afterImage: string;
   }>(null);
   
-  // Advanced training parameters
   const [trainingParameters, setTrainingParameters] = useState({
     learningRate: 0.0001,
     batchSize: 16,
@@ -63,32 +61,27 @@ const Training = () => {
     optimizerType: "adam"
   });
 
-  // Update training parameter
   const updateTrainingParameter = (param: string, value: any) => {
     setTrainingParameters(prev => ({
       ...prev,
       [param]: value
     }));
     
-    // Special handling for epochs
     if (param === 'epochs') {
       setTotalEpochs(Number(value));
     }
   };
 
-  // Handle file selection for training dataset
   const handleTrainingFileSelect = (file: File) => {
     setTrainingFiles(prev => [...prev, file]);
     toast.success(`Added training file: ${file.name}`);
   };
 
-  // Handle file selection for validation dataset
   const handleValidationFileSelect = (file: File) => {
     setValidationFiles(prev => [...prev, file]);
     toast.success(`Added validation file: ${file.name}`);
   };
 
-  // Start the training process
   const startTraining = () => {
     if (trainingFiles.length === 0) {
       toast.error("Please upload training files first");
@@ -110,14 +103,12 @@ const Training = () => {
     
     toast.success("Training started successfully");
     
-    // Simulate training progress
     const trainingInterval = setInterval(() => {
       setTrainingProgress(prev => {
         const epochSize = 100 / totalEpochs;
         const currentEpochProgress = prev % epochSize;
         const newProgress = prev + (Math.random() * 0.5) + 0.1;
         
-        // If we've completed this epoch
         if (currentEpochProgress + (Math.random() * 0.5) + 0.1 >= epochSize) {
           setCurrentEpoch(curr => {
             const newEpoch = curr + 1;
@@ -148,20 +139,17 @@ const Training = () => {
     return () => clearInterval(trainingInterval);
   };
 
-  // Pause the training process
   const pauseTraining = () => {
     setIsTraining(false);
     toast.info("Training paused");
   };
 
-  // Resume the training process
   const resumeTraining = () => {
     setIsTraining(true);
     toast.info("Training resumed");
     startTraining();
   };
 
-  // Test the trained model
   const testModel = () => {
     if (!trainingComplete) {
       toast.error("You need to complete training before testing");
@@ -170,9 +158,7 @@ const Training = () => {
     
     toast.info("Testing model on validation dataset...");
     
-    // Simulate processing delay
     setTimeout(() => {
-      // Generate a sample test result
       const testImage = trainingFiles[0] || validationFiles[0];
       
       if (testImage) {
@@ -181,7 +167,6 @@ const Training = () => {
           if (e.target?.result) {
             const originalImageUrl = e.target.result.toString();
             
-            // Create a canvas to apply simple enhancements for the "after" image
             const img = new Image();
             img.onload = () => {
               const canvas = document.createElement('canvas');
@@ -190,21 +175,16 @@ const Training = () => {
               const ctx = canvas.getContext('2d');
               
               if (ctx) {
-                // Draw the original image
                 ctx.drawImage(img, 0, 0);
                 
-                // Apply some enhancements to simulate the model's output
-                // Increase contrast and saturation
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imageData.data;
                 
                 for (let i = 0; i < data.length; i += 4) {
-                  // Enhance brightness and contrast
                   for (let j = 0; j < 3; j++) {
                     data[i + j] = 255 * Math.pow((data[i + j] / 255), 0.8);
                   }
                   
-                  // Enhance saturation
                   const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
                   data[i] = data[i] + (data[i] - avg) * 0.5;
                   data[i + 1] = data[i + 1] + (data[i + 1] - avg) * 0.5;
@@ -213,14 +193,12 @@ const Training = () => {
                 
                 ctx.putImageData(imageData, 0, 0);
                 
-                // Get the enhanced image URL
                 const enhancedImageUrl = canvas.toDataURL('image/png');
                 
-                // Set the test results
                 setTestResults({
-                  psnr: 28.3 + Math.random() * 4, // 28-32 is a good PSNR range
-                  ssim: 0.82 + Math.random() * 0.15, // 0.8-0.95 is a good SSIM range
-                  lpips: 0.15 - Math.random() * 0.1, // Lower is better for LPIPS (0.05-0.2)
+                  psnr: 28.3 + Math.random() * 4,
+                  ssim: 0.82 + Math.random() * 0.15,
+                  lpips: 0.15 - Math.random() * 0.1,
                   beforeImage: originalImageUrl,
                   afterImage: enhancedImageUrl
                 });
@@ -238,7 +216,6 @@ const Training = () => {
     }, 2000);
   };
 
-  // Format time duration in hours, minutes, seconds
   const formatDuration = (start: Date | null, end: Date | null) => {
     if (!start || !end) return "00:00:00";
     
@@ -250,7 +227,6 @@ const Training = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Get estimated time remaining
   const getEstimatedTimeRemaining = () => {
     if (!isTraining || !trainingStartTime) return "00:00:00";
     
@@ -311,7 +287,7 @@ const Training = () => {
                       <FileUpload
                         onFileSelect={handleTrainingFileSelect}
                         accept="image/*"
-                        multiple={true}
+                        allowMultiple={true}
                         className="mb-4"
                       />
                       
@@ -342,7 +318,7 @@ const Training = () => {
                       <FileUpload
                         onFileSelect={handleValidationFileSelect}
                         accept="image/*"
-                        multiple={true}
+                        allowMultiple={true}
                         className="mb-4"
                       />
                       

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +21,29 @@ interface MetricsProps {
   currentEpoch: number;
 }
 
-const TrainingMetrics = ({ trainingData, currentEpoch }: MetricsProps) => {
+const generateSampleTrainingData = (epochs: number) => {
+  const data = [];
+  for (let i = 0; i <= epochs; i++) {
+    data.push({
+      epoch: i,
+      loss: Math.max(0.8 - (i * 0.07) + (Math.random() * 0.1), 0.1),
+      accuracy: Math.min(0.6 + (i * 0.03) + (Math.random() * 0.05), 0.98),
+      psnr: Math.min(25 + (i * 0.5) + (Math.random() * 2), 35),
+      ssim: Math.min(0.7 + (i * 0.02) + (Math.random() * 0.05), 0.95),
+      lpips: Math.max(0.3 - (i * 0.02) + (Math.random() * 0.03), 0.05),
+      sharpness: Math.min(0.5 + (i * 0.04) + (Math.random() * 0.05), 0.95),
+      noiseReduction: Math.min(0.4 + (i * 0.05) + (Math.random() * 0.05), 0.9),
+      colorFidelity: Math.min(0.6 + (i * 0.03) + (Math.random() * 0.05), 0.95),
+      textureDetail: Math.min(0.5 + (i * 0.04) + (Math.random() * 0.05), 0.9)
+    });
+  }
+  return data;
+};
+
+const TrainingMetrics: React.FC<{ trainingData?: MetricsProps['trainingData']; currentEpoch?: number }> = ({ 
+  trainingData = generateSampleTrainingData(10),
+  currentEpoch = 0
+}) => {
   const config = {
     loss: {
       label: 'Loss',
