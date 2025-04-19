@@ -1,3 +1,4 @@
+
 import React from "react";
 
 export interface FileUploadProps {
@@ -5,6 +6,7 @@ export interface FileUploadProps {
   accept?: string;
   allowMultiple?: boolean;
   className?: string;
+  showSupportedTypes?: boolean;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -12,6 +14,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   accept,
   allowMultiple = false,
   className,
+  showSupportedTypes = false,
 }) => {
   return (
     <div className={className}>
@@ -36,6 +39,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       >
         Choose file
       </label>
+      
+      {showSupportedTypes && (
+        <p className="mt-2 text-xs text-gray-400">
+          Supported formats: JPG, PNG, WEBP, HEIC, HEIF, TIFF, BMP, GIF
+        </p>
+      )}
     </div>
   );
 };
+
