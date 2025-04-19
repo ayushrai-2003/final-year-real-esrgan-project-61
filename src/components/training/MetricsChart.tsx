@@ -1,0 +1,48 @@
+
+import React from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
+
+interface MetricsChartProps {
+  title: string;
+  data: any[];
+  metrics: {
+    key: string;
+    name: string;
+    color: string;
+  }[];
+}
+
+export const MetricsChart: React.FC<MetricsChartProps> = ({ title, data, metrics }) => {
+  return (
+    <Card className="bg-esrgan-black-light border-gray-800">
+      <CardHeader>
+        <CardTitle className="text-white">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="epoch" stroke="#9CA3AF" />
+              <YAxis stroke="#9CA3AF" />
+              <ChartTooltip />
+              <Legend />
+              {metrics.map((metric) => (
+                <Line
+                  key={metric.key}
+                  type="monotone"
+                  dataKey={metric.key}
+                  name={metric.name}
+                  stroke={metric.color}
+                  dot={false}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  );
+};
