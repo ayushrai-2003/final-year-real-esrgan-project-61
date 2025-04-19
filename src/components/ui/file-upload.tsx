@@ -12,7 +12,7 @@ interface FileUploadProps {
 
 export function FileUpload({ 
   onFileSelect, 
-  accept = "*", // Changed to accept all file types
+  accept = "image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff,image/bmp,image/gif", // Updated accepted formats
   className,
   showSupportedTypes = true
 }: FileUploadProps) {
@@ -27,17 +27,20 @@ export function FileUpload({
     if (type.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-blue-400" />;
     if (type.startsWith('video/')) return <FileVideo className="h-5 w-5 text-purple-400" />;
     if (type.startsWith('text/')) return <FileText className="h-5 w-5 text-yellow-400" />;
-    if (type === 'application/pdf') return <File className="h-5 w-5 text-red-400" />; // Changed from FilePdf to File
+    if (type === 'application/pdf') return <File className="h-5 w-5 text-red-400" />;
     if (type.includes('spreadsheet') || type.includes('excel')) return <FileSpreadsheet className="h-5 w-5 text-green-400" />;
     return <FileIcon className="h-5 w-5 text-gray-400" />;
   };
 
   const handleFile = (file: File) => {
     if (file) {
+      if (file.type.includes('heic') || file.type.includes('heif')) {
+        console.log('Processing HEIC/HEIF image');
+      }
+      
       setSelectedFile(file);
       onFileSelect(file);
       
-      // Create preview URL for images
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -45,7 +48,6 @@ export function FileUpload({
         };
         reader.readAsDataURL(file);
       } else {
-        // For non-image files, clear any existing preview
         setPreview(null);
       }
     }
@@ -127,7 +129,7 @@ export function FileUpload({
               </p>
               {showSupportedTypes && (
                 <p className="text-sm text-gray-400">
-                  Supports all file types (Images, PDFs, Documents, etc.)
+                  Supports JPEG, PNG, WEBP, HEIC, TIFF, BMP, and GIF images
                 </p>
               )}
             </div>

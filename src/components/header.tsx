@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Github, Info, UploadCloud } from "lucide-react";
@@ -55,10 +54,16 @@ export function Header() {
               About
             </Button>
           </Link>
-          <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800">
-            <Github className="mr-2 h-4 w-4" />
-            GitHub
-          </Button>
+          <a 
+            href="https://github.com/ayushrai-2003" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+              <Github className="mr-2 h-4 w-4" />
+              GitHub
+            </Button>
+          </a>
         </div>
       </div>
     </header>
