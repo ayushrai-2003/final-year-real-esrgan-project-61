@@ -14,6 +14,208 @@ interface ProcessorProps {
   onProcessingComplete: (enhancedImageUrl: string) => void;
 }
 
+// Basic image enhancement functions
+const enhanceSharpness = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  
+  // Basic sharpening using a convolution matrix
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  // Create a copy of the original data
+  const original = new Uint8ClampedArray(data);
+  
+  // Apply a simple sharpening algorithm
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      for (let c = 0; c < 3; c++) {
+        const i = (y * width + x) * 4 + c;
+        
+        // Center pixel value
+        const centerVal = original[i];
+        
+        // Surrounding pixel values
+        const surroundingAvg = (
+          original[i - 4] + original[i + 4] + 
+          original[i - width * 4] + original[i + width * 4]
+        ) / 4;
+        
+        // Adjust sharpness based on level
+        const diff = centerVal - surroundingAvg;
+        data[i] = Math.min(255, Math.max(0, centerVal + diff * level));
+      }
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+};
+
+const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  
+  // Basic color enhancement
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  // Adjust saturation and vibrance
+  for (let i = 0; i < data.length; i += 4) {
+    // Convert RGB to HSL
+    const r = data[i] / 255;
+    const g = data[i + 1] / 255;
+    const b = data[i + 2] / 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      
+      h /= 6;
+    }
+    
+    // Adjust saturation based on level
+    s = Math.min(1, s * (1 + level * 0.5));
+    
+    // Convert back to RGB
+    const hslToRgb = (h: number, s: number, l: number) => {
+      if (s === 0) return [l, l, l];
+      
+      const hue2rgb = (p: number, q: number, t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      
+      return [
+        hue2rgb(p, q, h + 1/3),
+        hue2rgb(p, q, h),
+        hue2rgb(p, q, h - 1/3)
+      ];
+    };
+    
+    const [r2, g2, b2] = hslToRgb(h, s, l);
+    
+    data[i] = Math.round(r2 * 255);
+    data[i + 1] = Math.round(g2 * 255);
+    data[i + 2] = Math.round(b2 * 255);
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+};
+
+const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  
+  // Basic noise reduction using a simple blur
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  // Create a copy of the original data
+  const original = new Uint8ClampedArray(data);
+  
+  // Apply a median filter with strength based on level
+  const filterSize = Math.max(1, Math.round(level * 2));
+  
+  for (let y = filterSize; y < height - filterSize; y++) {
+    for (let x = filterSize; x < width - filterSize; x++) {
+      for (let c = 0; c < 3; c++) {
+        const i = (y * width + x) * 4 + c;
+        
+        const values = [];
+        for (let dy = -filterSize; dy <= filterSize; dy++) {
+          for (let dx = -filterSize; dx <= filterSize; dx++) {
+            const offset = ((y + dy) * width + (x + dx)) * 4 + c;
+            values.push(original[offset]);
+          }
+        }
+        
+        // Apply median filtering with weight for the center pixel
+        values.sort((a, b) => a - b);
+        const medianIndex = Math.floor(values.length / 2);
+        const centerVal = original[i];
+        
+        // Blend between original and filtered value based on level
+        data[i] = centerVal * (1 - level) + values[medianIndex] * level;
+      }
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+};
+
+const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  // Find min and max values
+  let min = 255, max = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    if (brightness < min) min = brightness;
+    if (brightness > max) max = brightness;
+  }
+  
+  // Apply contrast adjustment
+  const factor = 255 / (max - min) * level + (1 - level);
+  const offset = -min * factor * level;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      data[i + c] = Math.min(255, Math.max(0, data[i + c] * factor + offset));
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+};
+
+const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElement => {
+  // Create a new canvas with increased dimensions
+  const newWidth = canvas.width * factor;
+  const newHeight = canvas.height * factor;
+  
+  const newCanvas = document.createElement('canvas');
+  newCanvas.width = newWidth;
+  newCanvas.height = newHeight;
+  
+  const ctx = newCanvas.getContext('2d');
+  if (!ctx) return canvas;
+  
+  // Use browser's built-in scaling with better quality
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
+  
+  return newCanvas;
+};
+
 export function EnhancementProcessor({ inputImage, onProcessingComplete }: ProcessorProps) {
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState("");
@@ -48,7 +250,68 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
     }
   }, [inputImage]);
 
-  const startProcessing = () => {
+  const processImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        // Create a canvas to work with
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+        
+        // Draw the original image to the canvas
+        ctx.drawImage(img, 0, 0);
+        
+        // Apply all enhancement steps
+        let processedCanvas = canvas;
+        
+        // Apply noise reduction
+        processedCanvas = reduceNoise(processedCanvas, enhancementSettings.noiseReduction);
+        
+        // Apply sharpness enhancement
+        processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement);
+        
+        // Apply color correction if enabled
+        if (enhancementSettings.colorCorrection) {
+          processedCanvas = enhanceColors(processedCanvas, enhancementSettings.texturePreservation);
+        }
+        
+        // Apply contrast enhancement
+        processedCanvas = enhanceContrast(processedCanvas, enhancementSettings.contrastEnhancement);
+        
+        // Upscale the image
+        processedCanvas = upscaleImage(processedCanvas, enhancementSettings.upscalingFactor);
+        
+        // Convert back to data URL
+        const enhancedImageUrl = processedCanvas.toDataURL('image/png');
+        resolve(enhancedImageUrl);
+      };
+      
+      img.onerror = () => {
+        reject(new Error("Failed to load image"));
+      };
+      
+      // Load the image from the file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          img.src = e.target.result.toString();
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error("Failed to read file"));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const startProcessing = async () => {
     if (!inputImage) return;
 
     // Check if file is an image
@@ -82,43 +345,36 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
     setProgress(0);
     setCurrentStage(stages[0]);
 
-    // Simulate processing stages with increasing progress
-    let currentStageIndex = 0;
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const increment = Math.random() * 5 + 1;
-        const newProgress = prev + increment;
-        
-        if (newProgress >= (currentStageIndex + 1) * (100 / stages.length)) {
-          currentStageIndex = Math.min(currentStageIndex + 1, stages.length - 1);
-          setCurrentStage(stages[currentStageIndex]);
-        }
-        
-        if (newProgress >= 100) {
-          clearInterval(timer);
-          
-          // Simulate completion after all stages
-          setTimeout(() => {
-            setIsProcessing(false);
-            // For demo, we'll just use the original image as "enhanced"
-            // In a real app, this would come from your backend
-            const reader = new FileReader();
-            reader.onload = () => {
-              if (reader.result) {
-                onProcessingComplete(reader.result.toString());
-                toast.success("Image enhancement complete!");
-              }
-            };
-            reader.readAsDataURL(inputImage);
-          }, 500);
-          return 100;
-        }
-        
-        return newProgress;
-      });
-    }, 100);
+    try {
+      // Simulate processing stages with increasing progress
+      const intervalId = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 95) {
+            clearInterval(intervalId);
+            return 95;
+          }
+          return prev + Math.random() * 3 + 1;
+        });
+      }, 100);
 
-    return () => clearInterval(timer);
+      // Process the image with our actual enhancement functions
+      const enhancedImageUrl = await processImage(inputImage);
+      
+      clearInterval(intervalId);
+      setProgress(100);
+      setCurrentStage("Processing complete");
+      
+      // Small delay to show 100% completion
+      setTimeout(() => {
+        setIsProcessing(false);
+        onProcessingComplete(enhancedImageUrl);
+      }, 500);
+      
+    } catch (error) {
+      setProcessingError("Failed to process image. Please try again with a different image.");
+      setIsProcessing(false);
+      toast.error("Image enhancement failed");
+    }
   };
 
   if (!inputImage) return null;
