@@ -1,49 +1,43 @@
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, AlertCircle, Settings, Car } from "lucide-react";
+import { Loader2, AlertCircle, Settings, Car, Zap, SparklesIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ProcessorProps {
   inputImage: File | null;
   onProcessingComplete: (enhancedImageUrl: string) => void;
   isLicensePlateMode?: boolean;
+  licensePlateMode?: "standard" | "advanced";
 }
 
-// Basic image enhancement functions
 const enhanceSharpness = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
   
-  // Basic sharpening using a convolution matrix
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   const width = canvas.width;
   const height = canvas.height;
   
-  // Create a copy of the original data
   const original = new Uint8ClampedArray(data);
   
-  // Apply a simple sharpening algorithm
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       for (let c = 0; c < 3; c++) {
         const i = (y * width + x) * 4 + c;
         
-        // Center pixel value
         const centerVal = original[i];
-        
-        // Surrounding pixel values
         const surroundingAvg = (
           original[i - 4] + original[i + 4] + 
           original[i - width * 4] + original[i + width * 4]
         ) / 4;
         
-        // Adjust sharpness based on level
         const diff = centerVal - surroundingAvg;
         data[i] = Math.min(255, Math.max(0, centerVal + diff * level));
       }
@@ -58,13 +52,10 @@ const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElem
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
   
-  // Basic color enhancement
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
-  // Adjust saturation and vibrance
   for (let i = 0; i < data.length; i += 4) {
-    // Convert RGB to HSL
     const r = data[i] / 255;
     const g = data[i + 1] / 255;
     const b = data[i + 2] / 255;
@@ -86,10 +77,8 @@ const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElem
       h /= 6;
     }
     
-    // Adjust saturation based on level
     s = Math.min(1, s * (1 + level * 0.5));
     
-    // Convert back to RGB
     const hslToRgb = (h: number, s: number, l: number) => {
       if (s === 0) return [l, l, l];
       
@@ -127,16 +116,13 @@ const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElemen
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
   
-  // Basic noise reduction using a simple blur
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   const width = canvas.width;
   const height = canvas.height;
   
-  // Create a copy of the original data
   const original = new Uint8ClampedArray(data);
   
-  // Apply a median filter with strength based on level
   const filterSize = Math.max(1, Math.round(level * 2));
   
   for (let y = filterSize; y < height - filterSize; y++) {
@@ -152,12 +138,10 @@ const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElemen
           }
         }
         
-        // Apply median filtering with weight for the center pixel
         values.sort((a, b) => a - b);
         const medianIndex = Math.floor(values.length / 2);
         const centerVal = original[i];
         
-        // Blend between original and filtered value based on level
         data[i] = centerVal * (1 - level) + values[medianIndex] * level;
       }
     }
@@ -174,7 +158,6 @@ const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasEl
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
-  // Find min and max values
   let min = 255, max = 0;
   for (let i = 0; i < data.length; i += 4) {
     const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
@@ -182,7 +165,6 @@ const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasEl
     if (brightness > max) max = brightness;
   }
   
-  // Apply contrast adjustment
   const factor = 255 / (max - min) * level + (1 - level);
   const offset = -min * factor * level;
   
@@ -197,7 +179,6 @@ const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasEl
 };
 
 const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElement => {
-  // Create a new canvas with increased dimensions
   const newWidth = canvas.width * factor;
   const newHeight = canvas.height * factor;
   
@@ -208,7 +189,6 @@ const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElem
   const ctx = newCanvas.getContext('2d');
   if (!ctx) return canvas;
   
-  // Use browser's built-in scaling with better quality
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
@@ -216,39 +196,102 @@ const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElem
   return newCanvas;
 };
 
-const enhanceLicensePlate = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
+const enhanceLicensePlate = (canvas: HTMLCanvasElement, isAdvanced: boolean = false): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
   
-  // Step 1: Convert to grayscale for better text processing
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
   for (let i = 0; i < data.length; i += 4) {
-    // Convert to grayscale with weighted RGB values
     const grayValue = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
     data[i] = data[i + 1] = data[i + 2] = grayValue;
   }
   
   ctx.putImageData(imageData, 0, 0);
   
-  // Step 2: Increase contrast significantly for license plate text
   const contrastCanvas = enhanceContrast(canvas, 0.9);
   
-  // Step 3: Apply specialized sharpening for text
   let processedCanvas = enhanceSharpness(contrastCanvas, 0.9);
   
-  // Step 4: Apply additional license plate specific processing
-  // Binarize the image to further enhance text visibility
+  if (isAdvanced) {
+    const edgeCtx = processedCanvas.getContext('2d');
+    if (edgeCtx) {
+      const edgeData = edgeCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
+      const edgePixels = edgeData.data;
+      const width = processedCanvas.width;
+      const height = processedCanvas.height;
+      
+      const original = new Uint8ClampedArray(edgePixels);
+      
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const pos = (y * width + x) * 4;
+          
+          const gx = 
+            -1 * original[((y-1) * width + (x-1)) * 4] +
+            -2 * original[((y) * width + (x-1)) * 4] +
+            -1 * original[((y+1) * width + (x-1)) * 4] +
+            1 * original[((y-1) * width + (x+1)) * 4] +
+            2 * original[((y) * width + (x+1)) * 4] +
+            1 * original[((y+1) * width + (x+1)) * 4];
+            
+          const gy = 
+            -1 * original[((y-1) * width + (x-1)) * 4] +
+            -2 * original[((y-1) * width + (x)) * 4] +
+            -1 * original[((y-1) * width + (x+1)) * 4] +
+            1 * original[((y+1) * width + (x-1)) * 4] +
+            2 * original[((y+1) * width + (x)) * 4] +
+            1 * original[((y+1) * width + (x+1)) * 4];
+            
+          const magnitude = Math.sqrt(gx * gx + gy * gy);
+          
+          const threshold = isAdvanced ? 130 : 150;
+          const edgeValue = magnitude > threshold ? 255 : 0;
+          
+          edgePixels[pos] = edgePixels[pos + 1] = edgePixels[pos + 2] = edgeValue;
+        }
+      }
+      
+      edgeCtx.putImageData(edgeData, 0, 0);
+    }
+    
+    const dilateCtx = processedCanvas.getContext('2d');
+    if (dilateCtx) {
+      const dilateData = dilateCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
+      const dilatePixels = dilateData.data;
+      const width = processedCanvas.width;
+      const height = processedCanvas.height;
+      
+      const original = new Uint8ClampedArray(dilatePixels);
+      
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const pos = (y * width + x) * 4;
+          
+          let maxVal = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const neighborPos = ((y + dy) * width + (x + dx)) * 4;
+              maxVal = Math.max(maxVal, original[neighborPos]);
+            }
+          }
+          
+          dilatePixels[pos] = dilatePixels[pos + 1] = dilatePixels[pos + 2] = maxVal;
+        }
+      }
+      
+      dilateCtx.putImageData(dilateData, 0, 0);
+    }
+  }
+  
   const binaryCtx = processedCanvas.getContext('2d');
   if (binaryCtx) {
     const binaryData = binaryCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
     const binaryPixels = binaryData.data;
     
-    // Apply a local adaptive threshold for better text extraction
-    const threshold = 150;
+    const threshold = isAdvanced ? 130 : 150;
     for (let i = 0; i < binaryPixels.length; i += 4) {
-      // Check if pixel is close to threshold and adjust for better character definition
       const value = binaryPixels[i];
       const newValue = value > threshold ? 255 : 0;
       binaryPixels[i] = binaryPixels[i + 1] = binaryPixels[i + 2] = newValue;
@@ -260,14 +303,19 @@ const enhanceLicensePlate = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
   return processedCanvas;
 };
 
-export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicensePlateMode = false }: ProcessorProps) {
+export function EnhancementProcessor({ 
+  inputImage, 
+  onProcessingComplete, 
+  isLicensePlateMode = false,
+  licensePlateMode = "standard" 
+}: ProcessorProps) {
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [animateStartButton, setAnimateStartButton] = useState(false);
   
-  // Enhanced settings
   const [enhancementSettings, setEnhancementSettings] = useState({
     sharpnessEnhancement: 0.7,
     noiseReduction: 0.6,
@@ -285,21 +333,33 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
   };
 
   useEffect(() => {
-    // Reset state when input image changes
     if (inputImage) {
       setProcessingError(null);
       setProgress(0);
       setCurrentStage("");
       setIsProcessing(false);
+      
+      const timeout = setTimeout(() => {
+        setAnimateStartButton(true);
+        setTimeout(() => setAnimateStartButton(false), 1500);
+      }, 500);
+      
+      return () => clearTimeout(timeout);
     }
   }, [inputImage]);
 
-  const processLicensePlate = async (file: File): Promise<string> => {
+  useEffect(() => {
+    if (animateStartButton) {
+      const timeout = setTimeout(() => setAnimateStartButton(false), 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [animateStartButton]);
+
+  const processLicensePlate = async (file: File, isAdvanced: boolean = false): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         try {
-          // Create a canvas to work with
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
@@ -310,22 +370,16 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
             return;
           }
           
-          // Draw the original image to the canvas
           ctx.drawImage(img, 0, 0);
           
-          // License plate specific processing pipeline
           let processedCanvas = canvas;
           
-          // Apply strong noise reduction first
           processedCanvas = reduceNoise(processedCanvas, 0.8);
           
-          // Apply specialized license plate enhancement
-          processedCanvas = enhanceLicensePlate(processedCanvas);
+          processedCanvas = enhanceLicensePlate(processedCanvas, isAdvanced);
           
-          // Upscale for better readability
-          processedCanvas = upscaleImage(processedCanvas, 2);
+          processedCanvas = upscaleImage(processedCanvas, isAdvanced ? 3 : 2);
           
-          // Convert back to data URL
           const enhancedImageUrl = processedCanvas.toDataURL('image/png');
           resolve(enhancedImageUrl);
         } catch (error) {
@@ -339,7 +393,6 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
         reject(new Error("Failed to load image"));
       };
       
-      // Load the image from the file
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -359,7 +412,6 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
       const img = new Image();
       img.onload = () => {
         try {
-          // Create a canvas to work with
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
@@ -370,30 +422,22 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
             return;
           }
           
-          // Draw the original image to the canvas
           ctx.drawImage(img, 0, 0);
           
-          // Apply all enhancement steps - calling functions properly
           let processedCanvas = canvas;
           
-          // Apply noise reduction
           processedCanvas = reduceNoise(processedCanvas, enhancementSettings.noiseReduction);
           
-          // Apply sharpness enhancement
           processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement);
           
-          // Apply color correction if enabled
           if (enhancementSettings.colorCorrection) {
             processedCanvas = enhanceColors(processedCanvas, enhancementSettings.texturePreservation);
           }
           
-          // Apply contrast enhancement
           processedCanvas = enhanceContrast(processedCanvas, enhancementSettings.contrastEnhancement);
           
-          // Upscale the image
           processedCanvas = upscaleImage(processedCanvas, enhancementSettings.upscalingFactor);
           
-          // Convert back to data URL
           const enhancedImageUrl = processedCanvas.toDataURL('image/png');
           resolve(enhancedImageUrl);
         } catch (error) {
@@ -407,7 +451,6 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
         reject(new Error("Failed to load image"));
       };
       
-      // Load the image from the file
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -425,22 +468,28 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
   const startProcessing = async () => {
     if (!inputImage) return;
 
-    // Check if file is an image
-    if (!inputImage.type.startsWith('image/')) {
-      setProcessingError("Only image files can be enhanced. Please select an image file.");
-      toast.error("Only image files can be enhanced");
-      return;
-    }
-
+    const isAdvanced = isLicensePlateMode && licensePlateMode === "advanced";
+    
     const stages = isLicensePlateMode 
-      ? [
-          "Analyzing license plate",
-          "Preprocessing image",
-          "Enhancing text clarity",
-          "Applying advanced OCR optimization",
-          "Performing text extraction enhancement",
-          "Finalizing license plate image"
-        ]
+      ? isAdvanced 
+        ? [
+            "Initializing advanced analysis",
+            "Preprocessing image data",
+            "Applying adaptive binarization",
+            "Running neural OCR enhancement",
+            "Optimizing character geometry",
+            "Performing multi-scale analysis",
+            "Applying deep contrast correction",
+            "Finalizing license plate enhancement"
+          ]
+        : [
+            "Analyzing license plate",
+            "Preprocessing image",
+            "Enhancing text clarity",
+            "Applying OCR optimization",
+            "Performing text extraction enhancement",
+            "Finalizing license plate image"
+          ]
       : [
           "Analyzing image",
           "Preprocessing",
@@ -456,7 +505,6 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
     setCurrentStage(stages[0]);
 
     try {
-      // Simulate processing stages with increasing progress
       const intervalId = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 95) {
@@ -464,12 +512,12 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
             return 95;
           }
           
-          // Slower progress for license plate mode to simulate more intensive processing
-          const increment = isLicensePlateMode 
-            ? Math.random() * 2 + 0.5
-            : Math.random() * 3 + 1;
+          const increment = isLicensePlateMode && isAdvanced
+            ? Math.random() * 1.5 + 0.3
+            : isLicensePlateMode 
+              ? Math.random() * 2 + 0.5
+              : Math.random() * 3 + 1;
             
-          // Update the current stage based on progress
           const stageIndex = Math.min(
             Math.floor((prev / 100) * stages.length),
             stages.length - 1
@@ -480,16 +528,14 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
         });
       }, 100);
 
-      // Process the image based on the selected mode
       const enhancedImageUrl = isLicensePlateMode
-        ? await processLicensePlate(inputImage)
+        ? await processLicensePlate(inputImage, isAdvanced)
         : await processImage(inputImage);
       
       clearInterval(intervalId);
       setProgress(100);
       setCurrentStage("Processing complete");
       
-      // Small delay to show 100% completion
       setTimeout(() => {
         setIsProcessing(false);
         onProcessingComplete(enhancedImageUrl);
@@ -506,21 +552,35 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
 
   if (processingError) {
     return (
-      <div className="w-full rounded-lg border border-red-500/30 bg-red-950/10 p-4 mt-6 animate-fade-in">
+      <motion.div 
+        className="w-full rounded-lg border border-red-500/30 bg-red-950/10 p-4 mt-6"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <div className="flex items-center space-x-2">
           <AlertCircle className="h-5 w-5 text-red-500" />
           <p className="text-red-400">{processingError}</p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   if (!isProcessing) {
     return (
-      <div className="w-full mt-6 animate-fade-in space-y-4">
+      <motion.div
+        className="w-full mt-6 space-y-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium text-white">
-            {isLicensePlateMode ? "License Plate Enhancement" : "Enhancement Options"}
+            {isLicensePlateMode 
+              ? licensePlateMode === "advanced" 
+                ? "Advanced License Plate Enhancement" 
+                : "License Plate Enhancement" 
+              : "Enhancement Options"}
           </h3>
           {!isLicensePlateMode && (
             <Button 
@@ -536,7 +596,12 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
         </div>
         
         {showAdvancedSettings && !isLicensePlateMode && (
-          <div className="rounded-lg border border-gray-700 bg-esrgan-black-light p-4 space-y-3 mb-4">
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="rounded-lg border border-gray-700 bg-esrgan-black-light p-4 space-y-3 mb-4"
+          >
             <div className="space-y-1">
               <Label htmlFor="sharpnessEnhancement" className="text-gray-300">Sharpness Enhancement</Label>
               <div className="flex items-center space-x-2">
@@ -620,68 +685,154 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
               />
               <Label htmlFor="colorCorrection" className="text-gray-300">Enable Color Correction</Label>
             </div>
-          </div>
+          </motion.div>
         )}
         
-        <Button 
-          onClick={startProcessing} 
-          className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80 py-6"
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          animate={animateStartButton ? { scale: [1, 1.05, 1] } : {}}
+          transition={{ duration: 0.3 }}
         >
-          <Loader2 className="mr-2 h-5 w-5" />
-          {isLicensePlateMode 
-            ? "Start License Plate Enhancement" 
-            : "Start Enhanced Image Processing"}
-        </Button>
+          <Button 
+            onClick={startProcessing} 
+            className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80 py-6"
+          >
+            {isLicensePlateMode && licensePlateMode === "advanced" ? (
+              <Zap className="mr-2 h-5 w-5" />
+            ) : (
+              <Loader2 className="mr-2 h-5 w-5" />
+            )}
+            {isLicensePlateMode 
+              ? licensePlateMode === "advanced"
+                ? "Start Advanced License Plate Enhancement"
+                : "Start License Plate Enhancement" 
+              : "Start Enhanced Image Processing"}
+          </Button>
+        </motion.div>
         
         <div className="text-xs text-gray-400 mt-2">
           <p className="text-center">
             {isLicensePlateMode 
-              ? "Optimized for vehicle license plates from any angle or lighting condition" 
+              ? licensePlateMode === "advanced"
+                ? "Using neural network and advanced OCR for maximum clarity and readability"
+                : "Optimized for vehicle license plates from any angle or lighting condition" 
               : "Optimized for all image formats including JPEG, PNG, WEBP, HEIC, HEIF, TIFF, BMP, and GIF"}
           </p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="w-full space-y-4 rounded-lg border border-gray-700 bg-esrgan-black-light p-6 mt-6 animate-fade-in">
+    <motion.div 
+      className="w-full space-y-4 rounded-lg border border-gray-700 bg-esrgan-black-light p-6 mt-6"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-white">
-          {isLicensePlateMode ? "Processing License Plate" : "Processing Image"}
+          {isLicensePlateMode 
+            ? licensePlateMode === "advanced"
+              ? "Advanced Processing" 
+              : "Processing License Plate" 
+            : "Processing Image"}
         </h3>
         <Badge variant="outline" className="bg-esrgan-black border-esrgan-orange">
-          {isLicensePlateMode ? "LicenseESRGAN" : "ESRGAN"}
+          {isLicensePlateMode 
+            ? licensePlateMode === "advanced" 
+              ? "NeuroESRGAN+" 
+              : "LicenseESRGAN" 
+            : "ESRGAN"}
         </Badge>
       </div>
 
       <div className="flex items-center space-x-4">
-        <Loader2 className="h-8 w-8 animate-spin text-esrgan-orange" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          {isLicensePlateMode && licensePlateMode === "advanced" ? (
+            <Zap className="h-8 w-8 text-esrgan-orange" />
+          ) : (
+            <Loader2 className="h-8 w-8 text-esrgan-orange" />
+          )}
+        </motion.div>
         <div className="flex-1">
           <div className="flex justify-between text-sm text-gray-400">
             <span>{currentStage}</span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <Progress value={progress} className="h-2 mt-1" />
+          <div className="relative pt-1">
+            <div className="overflow-hidden h-2 mt-1 text-xs flex rounded-full bg-gray-800">
+              <motion.div 
+                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-esrgan-orange"
+                initial={{ width: "0%" }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="space-y-2 text-sm italic text-gray-400">
         {isLicensePlateMode ? (
-          <p>Applying specialized license plate enhancement algorithms...</p>
+          licensePlateMode === "advanced" ? (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              Applying advanced neural network enhancement for maximum license plate clarity...
+            </motion.p>
+          ) : (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              Applying specialized license plate enhancement algorithms...
+            </motion.p>
+          )
         ) : inputImage.type.includes('heic') || inputImage.type.includes('heif') ? (
-          <p>Processing HEIC/HEIF format with specialized algorithms...</p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            Processing HEIC/HEIF format with specialized algorithms...
+          </motion.p>
         ) : (
-          <p>Enhancing image with {enhancementSettings.sharpnessEnhancement > 0.7 ? 'high sharpness' : 'balanced detail'} 
-            {enhancementSettings.noiseReduction > 0.7 ? ' and aggressive noise reduction' : ' and moderate noise reduction'}...</p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            Enhancing image with {enhancementSettings.sharpnessEnhancement > 0.7 ? 'high sharpness' : 'balanced detail'} 
+            {enhancementSettings.noiseReduction > 0.7 ? ' and aggressive noise reduction' : ' and moderate noise reduction'}...
+          </motion.p>
         )}
         
-        <div className="text-xs text-gray-500">
+        <motion.div 
+          className="text-xs text-gray-500"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           {isLicensePlateMode ? (
-            <span>
-              <Car className="inline-block h-3 w-3 mr-1" /> 
-              OCR Optimization • Text Clarity • Background Noise Removal
-            </span>
+            licensePlateMode === "advanced" ? (
+              <span>
+                <Zap className="inline-block h-3 w-3 mr-1 text-esrgan-orange" /> 
+                Neural Network • Deep OCR • Adaptive Binarization • Edge Detection
+              </span>
+            ) : (
+              <span>
+                <Car className="inline-block h-3 w-3 mr-1" /> 
+                OCR Optimization • Text Clarity • Background Noise Removal
+              </span>
+            )
           ) : (
             <span>
               Upscaling: {enhancementSettings.upscalingFactor}x • 
@@ -689,8 +840,8 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicen
               Texture: {Math.round(enhancementSettings.texturePreservation * 100)}%
             </span>
           )}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
