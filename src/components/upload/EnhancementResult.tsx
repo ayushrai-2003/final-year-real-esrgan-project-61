@@ -9,23 +9,25 @@ import { toast } from "sonner";
 import { EnhancementOptions } from "@/components/upload/EnhancementSettings";
 
 interface EnhancementResultProps {
-  inputPreviewUrl: string;
-  enhancedImageUrl: string;
+  inputPreviewUrls: string[];
+  enhancedImageUrls: string[];
+  currentFileIndex: number;
   isLicensePlateMode: boolean;
   licensePlateMode: "standard" | "advanced";
   enhancementOptions: EnhancementOptions;
 }
 
 export const EnhancementResult: React.FC<EnhancementResultProps> = ({
-  inputPreviewUrl,
-  enhancedImageUrl,
+  inputPreviewUrls,
+  enhancedImageUrls,
+  currentFileIndex,
   isLicensePlateMode,
   licensePlateMode,
   enhancementOptions,
 }) => {
   const handleDownload = () => {
     const link = document.createElement("a");
-    link.href = enhancedImageUrl;
+    link.href = enhancedImageUrls[currentFileIndex];
     link.download = "enhanced-image";
     document.body.appendChild(link);
     link.click();
@@ -47,8 +49,8 @@ export const EnhancementResult: React.FC<EnhancementResultProps> = ({
         <CardContent className="space-y-4">
           <div className="rounded-lg overflow-hidden border border-gray-700">
             <ImageComparison 
-              beforeImage={inputPreviewUrl} 
-              afterImage={enhancedImageUrl} 
+              beforeImage={inputPreviewUrls[currentFileIndex]} 
+              afterImage={enhancedImageUrls[currentFileIndex]} 
             />
           </div>
           

@@ -4,15 +4,17 @@ import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UploadCloud, Car, Zap, FileImage } from "lucide-react";
+import { UploadCloud, Car, Zap, FileImage, Files } from "lucide-react";
 import { EnhancementProcessor } from "@/components/enhancement-processor";
 import { EnhancementSettings, EnhancementOptions } from "@/components/upload/EnhancementSettings";
 import { toast } from "sonner";
+import { FileUpload } from "@/components/ui/file-upload";
 
 interface UploadFormProps {
-  inputFile: File | null;
-  inputPreviewUrl: string | null;
-  enhancedImageUrl: string | null;
+  inputFiles: File[];
+  inputPreviewUrls: string[];
+  currentFileIndex: number;
+  enhancedImageUrls: string[];
   isLicensePlateMode: boolean;
   licensePlateMode: "standard" | "advanced";
   enhancementOptions: EnhancementOptions;
@@ -20,16 +22,17 @@ interface UploadFormProps {
   onProcessingComplete: (resultUrl: string) => void;
   setIsLicensePlateMode: (value: boolean) => void;
   setLicensePlateMode: (value: "standard" | "advanced") => void;
-  setInputFile: (file: File | null) => void;
-  setInputPreviewUrl: (url: string | null) => void;
-  setEnhancedImageUrl: (url: string | null) => void;
+  setInputFiles: (files: File[]) => void;
+  setInputPreviewUrls: (urls: string[]) => void;
+  setEnhancedImageUrls: (urls: string[]) => void;
   setEnhancementOptions: (options: EnhancementOptions) => void;
 }
 
 export const UploadForm: React.FC<UploadFormProps> = ({
-  inputFile,
-  inputPreviewUrl,
-  enhancedImageUrl,
+  inputFiles,
+  inputPreviewUrls,
+  currentFileIndex,
+  enhancedImageUrls,
   isLicensePlateMode,
   licensePlateMode,
   enhancementOptions,
@@ -37,11 +40,14 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   onProcessingComplete,
   setIsLicensePlateMode,
   setLicensePlateMode,
-  setInputFile,
-  setInputPreviewUrl,
-  setEnhancedImageUrl,
+  setInputFiles,
+  setInputPreviewUrls,
+  setEnhancedImageUrls,
   setEnhancementOptions,
 }) => {
+  const currentFile = inputFiles[currentFileIndex] || null;
+  const currentPreviewUrl = inputPreviewUrls[currentFileIndex] || null;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -104,7 +110,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             </TabsContent>
           </Tabs>
           
-          {!inputFile ? (
+          {inputFiles.length === 0 ? (
             <motion.label 
               className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer border-gray-700 bg-esrgan-black hover:border-esrgan-orange/50 transition-all"
               whileHover={{ scale: 1.02, borderColor: "rgba(255,69,0,0.7)" }}
@@ -125,6 +131,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
                 type="file" 
                 className="hidden" 
                 accept="image/*"
+                multiple
                 onChange={onFileSelect}
               />
             </motion.label>
@@ -136,9 +143,9 @@ export const UploadForm: React.FC<UploadFormProps> = ({
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
               >
-                {inputPreviewUrl ? (
+                {currentPreviewUrl ? (
                   <img 
-                    src={inputPreviewUrl} 
+                    src={currentPreviewUrl} 
                     alt="Original" 
                     className="max-w-full max-h-full object-contain" 
                   />
@@ -152,28 +159,41 @@ export const UploadForm: React.FC<UploadFormProps> = ({
               
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-400">
-                  {inputFile.name} ({(inputFile.size / (1024 * 1024)).toFixed(2)} MB)
+                  {currentFile ? (
+                    <>
+                      {currentFile.name} ({(currentFile.size / (1024 * 1024)).toFixed(2)} MB)
+                      {inputFiles.length > 1 && (
+                        <span className="ml-2">
+                          (Image {currentFileIndex + 1} of {inputFiles.length})
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    "No file selected"
+                  )}
                 </div>
                 <Button 
                   variant="outline"
                   size="sm"
                   className="border-gray-700 text-gray-300 hover:bg-gray-800"
                   onClick={() => {
-                    setInputFile(null);
-                    setInputPreviewUrl(null);
-                    setEnhancedImageUrl(null);
+                    setInputFiles([]);
+                    setInputPreviewUrls([]);
+                    setEnhancedImageUrls([]);
                   }}
                 >
                   Change
                 </Button>
               </div>
               
-              <EnhancementProcessor 
-                inputImage={inputFile} 
-                onProcessingComplete={onProcessingComplete}
-                isLicensePlateMode={isLicensePlateMode}
-                licensePlateMode={isLicensePlateMode ? licensePlateMode : undefined}
-              />
+              {currentFile && (
+                <EnhancementProcessor 
+                  inputImage={currentFile} 
+                  onProcessingComplete={onProcessingComplete}
+                  isLicensePlateMode={isLicensePlateMode}
+                  licensePlateMode={isLicensePlateMode ? licensePlateMode : undefined}
+                />
+              )}
             </div>
           )}
         </CardContent>
