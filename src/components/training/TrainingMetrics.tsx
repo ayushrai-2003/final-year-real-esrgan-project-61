@@ -1,6 +1,12 @@
 
 import React from 'react';
 import { MetricsChart } from './MetricsChart';
+import {
+  trainingMetrics,
+  qualityMetrics,
+  imageQualityMetrics,
+  plateMetrics
+} from '@/config/metricsConfig';
 
 interface TrainingMetricsProps {
   trainingData: any[];
@@ -8,29 +14,6 @@ interface TrainingMetricsProps {
 }
 
 const TrainingMetrics: React.FC<TrainingMetricsProps> = ({ trainingData, currentEpoch }) => {
-  const trainingMetrics = [
-    { key: 'loss', name: 'Loss', color: '#ef4444' },
-    { key: 'accuracy', name: 'Accuracy', color: '#22c55e' }
-  ];
-
-  const qualityMetrics = [
-    { key: 'psnr', name: 'PSNR', color: '#3b82f6' },
-    { key: 'ssim', name: 'SSIM', color: '#a855f7' },
-    { key: 'lpips', name: 'LPIPS', color: '#f59e0b' }
-  ];
-
-  const imageQualityMetrics = [
-    { key: 'sharpness', name: 'Sharpness', color: '#10b981' },
-    { key: 'noiseReduction', name: 'Noise Reduction', color: '#6366f1' },
-    { key: 'colorFidelity', name: 'Color Fidelity', color: '#ec4899' },
-    { key: 'textureDetail', name: 'Texture Detail', color: '#8b5cf6' }
-  ];
-
-  const plateMetrics = [
-    { key: 'plateDetectionAccuracy', name: 'Plate Detection', color: '#f97316' },
-    { key: 'plateRecognitionAccuracy', name: 'Plate Recognition', color: '#06b6d4' }
-  ];
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

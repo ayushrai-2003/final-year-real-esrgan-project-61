@@ -1,35 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import TrainingMetrics from "@/components/training/TrainingMetrics";
-import { toast } from "sonner";
-import { trainingService, Dataset } from "@/services/TrainingService";
 import { DatasetList } from "@/components/training/DatasetList";
+import { useTraining } from "@/hooks/useTraining";
 
 export default function Training() {
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [isTraining, setIsTraining] = useState(false);
-  const [currentEpoch, setCurrentEpoch] = useState(0);
-  
-  useEffect(() => {
-    setDatasets(trainingService.getDatasets());
-  }, []);
-
-  const handleStartTraining = async () => {
-    setIsTraining(true);
-    try {
-      await trainingService.trainAll((updatedDatasets) => {
-        setDatasets(updatedDatasets);
-        const completedCount = updatedDatasets.filter(d => d.status === 'completed').length;
-        setCurrentEpoch(Math.floor((completedCount / updatedDatasets.length) * 100));
-      });
-      toast.success("Training completed successfully!");
-    } catch (error) {
-      toast.error("An error occurred during training");
-    } finally {
-      setIsTraining(false);
-    }
-  };
+  const { datasets, isTraining, currentEpoch, startTraining } = useTraining();
 
   return (
     <div className="flex min-h-screen flex-col bg-esrgan-black">
@@ -46,7 +23,7 @@ export default function Training() {
             <DatasetList
               datasets={datasets}
               isTraining={isTraining}
-              onStartTraining={handleStartTraining}
+              onStartTraining={startTraining}
             />
 
             <TrainingMetrics
