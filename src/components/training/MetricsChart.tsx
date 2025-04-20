@@ -3,15 +3,12 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import { type MetricConfig } from '@/config/metricsConfig';
 
 interface MetricsChartProps {
   title: string;
   data: any[];
-  metrics: {
-    key: string;
-    name: string;
-    color: string;
-  }[];
+  metrics: MetricConfig[];
 }
 
 export const MetricsChart: React.FC<MetricsChartProps> = ({ title, data, metrics }) => {

@@ -5,7 +5,8 @@ import {
   trainingMetrics,
   qualityMetrics,
   imageQualityMetrics,
-  plateMetrics
+  plateMetrics,
+  type MetricConfig
 } from '@/config/metricsConfig';
 
 interface TrainingMetricsProps {
