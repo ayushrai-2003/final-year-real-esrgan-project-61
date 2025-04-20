@@ -105,7 +105,6 @@ const About = () => {
                         </div>
                         <p className="text-gray-400 mt-2">
                           Comprehensive research on various super-resolution models, with ESRGAN selected for its superior performance on detail preservation.
-                          We analyzed over 15 different architectures before finalizing our approach.
                         </p>
                       </div>
                     </div>
@@ -121,7 +120,6 @@ const About = () => {
                         </div>
                         <p className="text-gray-400 mt-2">
                           Curated high-quality datasets including DIV2K, DF2K, and specialized license plate datasets (INDIAN_LP and AUTO_LP).
-                          Our team spent over 400 hours curating, cleaning, and preprocessing the training data.
                         </p>
                       </div>
                     </div>
@@ -137,7 +135,6 @@ const About = () => {
                         </div>
                         <p className="text-gray-400 mt-2">
                           Extensive training on various datasets, with specialized fine-tuning for license plate recognition accuracy.
-                          Training was conducted on 8 NVIDIA A100 GPUs for a total of 2,000+ GPU hours to achieve optimal performance.
                         </p>
                       </div>
                     </div>
@@ -148,28 +145,11 @@ const About = () => {
                       </div>
                       <div>
                         <div className="flex items-center">
-                          <h4 className="font-semibold text-white text-lg">Phase 4: Optimization</h4>
-                          <span className="ml-3 text-xs bg-esrgan-orange/20 text-esrgan-orange px-2 py-1 rounded">Completed</span>
-                        </div>
-                        <p className="text-gray-400 mt-2">
-                          Performance optimization for real-world usage, reducing processing time while maintaining quality.
-                          We achieved a 68% reduction in processing time through architecture optimizations and efficient implementation.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="relative">
-                      <div className="absolute -left-[2.7rem] w-6 h-6 rounded-full bg-esrgan-orange flex items-center justify-center shadow-lg shadow-esrgan-orange/20">
-                        <Check className="h-4 w-4 text-black" />
-                      </div>
-                      <div>
-                        <div className="flex items-center">
-                          <h4 className="font-semibold text-white text-lg">Phase 5: Web Application Development</h4>
+                          <h4 className="font-semibold text-white text-lg">Phase 4: Web Application Development</h4>
                           <span className="ml-3 text-xs bg-esrgan-orange/20 text-esrgan-orange px-2 py-1 rounded">Completed</span>
                         </div>
                         <p className="text-gray-400 mt-2">
                           Creation of user-friendly interface for image enhancement with React and modern web technologies.
-                          The web application was designed with accessibility and ease-of-use as primary objectives.
                         </p>
                       </div>
                     </div>
@@ -209,7 +189,7 @@ const About = () => {
                     <div className="rounded-lg border border-gray-700 bg-esrgan-black p-6 hover:border-esrgan-orange/50 transition-all">
                       <h4 className="font-semibold text-white mb-3 text-lg">INDIAN Vehicle License Plate Dataset</h4>
                       <p className="text-gray-400 mb-3">
-                        Specialized collection of Indian license plates with varying conditions, including 5,000+ samples with different lighting, angles, and weather conditions.
+                        Specialized collection of Indian license plates with varying conditions, including 5,000+ samples.
                       </p>
                       <ul className="list-disc pl-5 text-gray-400 space-y-1">
                         <li>5,000+ annotated license plate images</li>
@@ -220,9 +200,9 @@ const About = () => {
                     </div>
                     
                     <div className="rounded-lg border border-gray-700 bg-esrgan-black p-6 hover:border-esrgan-orange/50 transition-all">
-                      <h4 className="font-semibold text-white mb-3 text-lg">AUTOMATIC LICENSE NUMBER PLATE DETECTION Dataset</h4>
+                      <h4 className="font-semibold text-white mb-3 text-lg">AUTOMATIC LICENSE PLATE DETECTION Dataset</h4>
                       <p className="text-gray-400 mb-3">
-                        Comprehensive dataset with 10,000+ annotated license plate images from multiple countries, focusing on detection and recognition accuracy.
+                        Comprehensive dataset with 10,000+ annotated license plate images from multiple countries.
                       </p>
                       <ul className="list-disc pl-5 text-gray-400 space-y-1">
                         <li>10,000+ annotated images</li>
@@ -230,32 +210,6 @@ const About = () => {
                         <li>Character-level annotations</li>
                         <li>Real-world surveillance scenarios</li>
                       </ul>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-8 rounded-lg border border-gray-700 bg-esrgan-black p-6">
-                    <h3 className="mb-4 text-xl font-medium gradient-text">Technologies Used</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="font-semibold text-white mb-3">Deep Learning Technologies</h4>
-                        <ul className="list-disc pl-5 text-gray-400 space-y-2">
-                          <li><span className="text-esrgan-orange">PyTorch:</span> Deep Learning Framework</li>
-                          <li><span className="text-esrgan-orange">ESRGAN Architecture:</span> Advanced GAN-based model</li>
-                          <li><span className="text-esrgan-orange">CUDA GPU Acceleration:</span> For optimal performance</li>
-                          <li><span className="text-esrgan-orange">TensorFlow:</span> For model validation</li>
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-semibold text-white mb-3">Web Technologies</h4>
-                        <ul className="list-disc pl-5 text-gray-400 space-y-2">
-                          <li><span className="text-esrgan-orange">React.js:</span> Frontend Framework</li>
-                          <li><span className="text-esrgan-orange">TailwindCSS:</span> For responsive styling</li>
-                          <li><span className="text-esrgan-orange">WebAssembly:</span> For client-side processing</li>
-                          <li><span className="text-esrgan-orange">RESTful APIs:</span> For model integration</li>
-                        </ul>
-                      </div>
                     </div>
                   </div>
                 </TabsContent>
