@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 export const useTraining = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [isTraining, setIsTraining] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const [currentEpoch, setCurrentEpoch] = useState(0);
 
   useEffect(() => {
@@ -28,10 +29,34 @@ export const useTraining = () => {
     }
   };
 
+  const startTesting = async () => {
+    setIsTesting(true);
+    try {
+      await trainingService.testAll((updatedDatasets) => {
+        setDatasets(updatedDatasets);
+      });
+      toast.success("Testing completed successfully!");
+    } catch (error) {
+      toast.error("An error occurred during testing");
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const generateDatasetAccuracyData = () => {
+    return datasets.map(dataset => ({
+      name: dataset.name,
+      accuracy: dataset.accuracy
+    }));
+  };
+
   return {
     datasets,
     isTraining,
+    isTesting,
     currentEpoch,
-    startTraining
+    startTraining,
+    startTesting,
+    generateDatasetAccuracyData
   };
 };

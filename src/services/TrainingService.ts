@@ -4,7 +4,9 @@ export type Dataset = {
   description: string;
   imageCount: number;
   trainingProgress: number;
-  status: 'pending' | 'training' | 'completed' | 'error';
+  testingProgress: number;
+  accuracy: number;
+  status: 'pending' | 'training' | 'testing' | 'completed' | 'error';
 };
 
 class TrainingService {
@@ -14,6 +16,8 @@ class TrainingService {
       description: "High-quality 2K resolution images",
       imageCount: 1000,
       trainingProgress: 0,
+      testingProgress: 0,
+      accuracy: 0,
       status: 'pending'
     },
     {
@@ -21,6 +25,8 @@ class TrainingService {
       description: "Combined DIV2K and Flickr2K dataset",
       imageCount: 3450,
       trainingProgress: 0,
+      testingProgress: 0,
+      accuracy: 0,
       status: 'pending'
     },
     {
@@ -28,6 +34,8 @@ class TrainingService {
       description: "Indian License Plate dataset",
       imageCount: 5000,
       trainingProgress: 0,
+      testingProgress: 0,
+      accuracy: 0,
       status: 'pending'
     },
     {
@@ -35,6 +43,8 @@ class TrainingService {
       description: "Automatic License Plate Detection dataset",
       imageCount: 10000,
       trainingProgress: 0,
+      testingProgress: 0,
+      accuracy: 0,
       status: 'pending'
     }
   ];
@@ -62,9 +72,38 @@ class TrainingService {
     dataset.status = 'completed';
   }
 
+  public async testDataset(dataset: Dataset, onProgress: (progress: number) => void): Promise<void> {
+    dataset.status = 'testing';
+    
+    // Simulate testing process with realistic delays and metrics
+    const totalBatches = Math.floor(dataset.imageCount / 64);
+    
+    for (let batch = 0; batch < totalBatches; batch++) {
+      // Simulate testing delay
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Calculate and update progress
+      const progress = (batch / totalBatches) * 100;
+      dataset.testingProgress = Math.min(progress, 100);
+      onProgress(dataset.testingProgress);
+    }
+    
+    // Generate a realistic accuracy between 85% and 98%
+    dataset.accuracy = 85 + (Math.random() * 13);
+    dataset.status = 'completed';
+  }
+
   public async trainAll(onDatasetProgress: (datasets: Dataset[]) => void): Promise<void> {
     for (const dataset of this.datasets) {
       await this.trainDataset(dataset, () => {
+        onDatasetProgress([...this.datasets]);
+      });
+    }
+  }
+
+  public async testAll(onDatasetProgress: (datasets: Dataset[]) => void): Promise<void> {
+    for (const dataset of this.datasets) {
+      await this.testDataset(dataset, () => {
         onDatasetProgress([...this.datasets]);
       });
     }
