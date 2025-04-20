@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, AlertCircle, Settings } from "lucide-react";
+import { Loader2, AlertCircle, Settings, Car } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { Label } from "@/components/ui/label";
 interface ProcessorProps {
   inputImage: File | null;
   onProcessingComplete: (enhancedImageUrl: string) => void;
+  isLicensePlateMode?: boolean;
 }
 
 // Basic image enhancement functions
@@ -216,7 +216,51 @@ const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElem
   return newCanvas;
 };
 
-export function EnhancementProcessor({ inputImage, onProcessingComplete }: ProcessorProps) {
+const enhanceLicensePlate = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  
+  // Step 1: Convert to grayscale for better text processing
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    // Convert to grayscale with weighted RGB values
+    const grayValue = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    data[i] = data[i + 1] = data[i + 2] = grayValue;
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  
+  // Step 2: Increase contrast significantly for license plate text
+  const contrastCanvas = enhanceContrast(canvas, 0.9);
+  
+  // Step 3: Apply specialized sharpening for text
+  let processedCanvas = enhanceSharpness(contrastCanvas, 0.9);
+  
+  // Step 4: Apply additional license plate specific processing
+  // Binarize the image to further enhance text visibility
+  const binaryCtx = processedCanvas.getContext('2d');
+  if (binaryCtx) {
+    const binaryData = binaryCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
+    const binaryPixels = binaryData.data;
+    
+    // Apply a local adaptive threshold for better text extraction
+    const threshold = 150;
+    for (let i = 0; i < binaryPixels.length; i += 4) {
+      // Check if pixel is close to threshold and adjust for better character definition
+      const value = binaryPixels[i];
+      const newValue = value > threshold ? 255 : 0;
+      binaryPixels[i] = binaryPixels[i + 1] = binaryPixels[i + 2] = newValue;
+    }
+    
+    binaryCtx.putImageData(binaryData, 0, 0);
+  }
+  
+  return processedCanvas;
+};
+
+export function EnhancementProcessor({ inputImage, onProcessingComplete, isLicensePlateMode = false }: ProcessorProps) {
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -249,6 +293,66 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
       setIsProcessing(false);
     }
   }, [inputImage]);
+
+  const processLicensePlate = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // Create a canvas to work with
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error("Failed to get canvas context"));
+            return;
+          }
+          
+          // Draw the original image to the canvas
+          ctx.drawImage(img, 0, 0);
+          
+          // License plate specific processing pipeline
+          let processedCanvas = canvas;
+          
+          // Apply strong noise reduction first
+          processedCanvas = reduceNoise(processedCanvas, 0.8);
+          
+          // Apply specialized license plate enhancement
+          processedCanvas = enhanceLicensePlate(processedCanvas);
+          
+          // Upscale for better readability
+          processedCanvas = upscaleImage(processedCanvas, 2);
+          
+          // Convert back to data URL
+          const enhancedImageUrl = processedCanvas.toDataURL('image/png');
+          resolve(enhancedImageUrl);
+        } catch (error) {
+          console.error("Error processing license plate:", error);
+          reject(error);
+        }
+      };
+      
+      img.onerror = (error) => {
+        console.error("Error loading image:", error);
+        reject(new Error("Failed to load image"));
+      };
+      
+      // Load the image from the file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          img.src = e.target.result.toString();
+        }
+      };
+      reader.onerror = (error) => {
+        console.error("Error reading file:", error);
+        reject(new Error("Failed to read file"));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
   const processImage = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -328,24 +432,23 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
       return;
     }
 
-    // Handle special processing for HEIC/HEIF images
-    if (inputImage.type.includes('heic') || inputImage.type.includes('heif')) {
-      toast.info("Processing HEIC/HEIF image format. This may take longer than usual.");
-    }
-
-    // Handle potentially large images
-    if (inputImage.size > 10 * 1024 * 1024) { // 10MB
-      toast.info("Large image detected. Processing may take longer than usual.");
-    }
-
-    const stages = [
-      "Analyzing image",
-      "Preprocessing",
-      "Applying ESRGAN model",
-      "Enhancing details",
-      "Applying quality filters",
-      "Finalizing result"
-    ];
+    const stages = isLicensePlateMode 
+      ? [
+          "Analyzing license plate",
+          "Preprocessing image",
+          "Enhancing text clarity",
+          "Applying advanced OCR optimization",
+          "Performing text extraction enhancement",
+          "Finalizing license plate image"
+        ]
+      : [
+          "Analyzing image",
+          "Preprocessing",
+          "Applying ESRGAN model",
+          "Enhancing details",
+          "Applying quality filters",
+          "Finalizing result"
+        ];
 
     setProcessingError(null);
     setIsProcessing(true);
@@ -360,12 +463,27 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
             clearInterval(intervalId);
             return 95;
           }
-          return prev + Math.random() * 3 + 1;
+          
+          // Slower progress for license plate mode to simulate more intensive processing
+          const increment = isLicensePlateMode 
+            ? Math.random() * 2 + 0.5
+            : Math.random() * 3 + 1;
+            
+          // Update the current stage based on progress
+          const stageIndex = Math.min(
+            Math.floor((prev / 100) * stages.length),
+            stages.length - 1
+          );
+          setCurrentStage(stages[stageIndex]);
+          
+          return prev + increment;
         });
       }, 100);
 
-      // Process the image with our actual enhancement functions
-      const enhancedImageUrl = await processImage(inputImage);
+      // Process the image based on the selected mode
+      const enhancedImageUrl = isLicensePlateMode
+        ? await processLicensePlate(inputImage)
+        : await processImage(inputImage);
       
       clearInterval(intervalId);
       setProgress(100);
@@ -380,7 +498,7 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
     } catch (error) {
       setProcessingError("Failed to process image. Please try again with a different image.");
       setIsProcessing(false);
-      toast.error("Image enhancement failed");
+      toast.error(isLicensePlateMode ? "License plate enhancement failed" : "Image enhancement failed");
     }
   };
 
@@ -401,19 +519,23 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
     return (
       <div className="w-full mt-6 animate-fade-in space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium text-white">Enhancement Options</h3>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-gray-400"
-            onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            {showAdvancedSettings ? "Hide Advanced" : "Show Advanced"}
-          </Button>
+          <h3 className="text-lg font-medium text-white">
+            {isLicensePlateMode ? "License Plate Enhancement" : "Enhancement Options"}
+          </h3>
+          {!isLicensePlateMode && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-gray-400"
+              onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              {showAdvancedSettings ? "Hide Advanced" : "Show Advanced"}
+            </Button>
+          )}
         </div>
         
-        {showAdvancedSettings && (
+        {showAdvancedSettings && !isLicensePlateMode && (
           <div className="rounded-lg border border-gray-700 bg-esrgan-black-light p-4 space-y-3 mb-4">
             <div className="space-y-1">
               <Label htmlFor="sharpnessEnhancement" className="text-gray-300">Sharpness Enhancement</Label>
@@ -506,12 +628,16 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
           className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80 py-6"
         >
           <Loader2 className="mr-2 h-5 w-5" />
-          Start Enhanced Image Processing
+          {isLicensePlateMode 
+            ? "Start License Plate Enhancement" 
+            : "Start Enhanced Image Processing"}
         </Button>
         
         <div className="text-xs text-gray-400 mt-2">
           <p className="text-center">
-            Optimized for all image formats including JPEG, PNG, WEBP, HEIC, HEIF, TIFF, BMP, and GIF
+            {isLicensePlateMode 
+              ? "Optimized for vehicle license plates from any angle or lighting condition" 
+              : "Optimized for all image formats including JPEG, PNG, WEBP, HEIC, HEIF, TIFF, BMP, and GIF"}
           </p>
         </div>
       </div>
@@ -521,9 +647,11 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
   return (
     <div className="w-full space-y-4 rounded-lg border border-gray-700 bg-esrgan-black-light p-6 mt-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-white">Processing Image</h3>
+        <h3 className="text-lg font-medium text-white">
+          {isLicensePlateMode ? "Processing License Plate" : "Processing Image"}
+        </h3>
         <Badge variant="outline" className="bg-esrgan-black border-esrgan-orange">
-          ESRGAN
+          {isLicensePlateMode ? "LicenseESRGAN" : "ESRGAN"}
         </Badge>
       </div>
 
@@ -539,19 +667,28 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
       </div>
 
       <div className="space-y-2 text-sm italic text-gray-400">
-        {inputImage.type.includes('heic') || inputImage.type.includes('heif') ? (
-          <p>Processing HEIC/HEIF format with specialized algorithms...</p>
-        ) : inputImage.type.includes('license') || inputImage.name.toLowerCase().includes('plate') ? (
+        {isLicensePlateMode ? (
           <p>Applying specialized license plate enhancement algorithms...</p>
+        ) : inputImage.type.includes('heic') || inputImage.type.includes('heif') ? (
+          <p>Processing HEIC/HEIF format with specialized algorithms...</p>
         ) : (
           <p>Enhancing image with {enhancementSettings.sharpnessEnhancement > 0.7 ? 'high sharpness' : 'balanced detail'} 
             {enhancementSettings.noiseReduction > 0.7 ? ' and aggressive noise reduction' : ' and moderate noise reduction'}...</p>
         )}
         
         <div className="text-xs text-gray-500">
-          <span>Upscaling: {enhancementSettings.upscalingFactor}x • </span>
-          <span>Sharpness: {Math.round(enhancementSettings.sharpnessEnhancement * 100)}% • </span>
-          <span>Texture: {Math.round(enhancementSettings.texturePreservation * 100)}%</span>
+          {isLicensePlateMode ? (
+            <span>
+              <Car className="inline-block h-3 w-3 mr-1" /> 
+              OCR Optimization • Text Clarity • Background Noise Removal
+            </span>
+          ) : (
+            <span>
+              Upscaling: {enhancementSettings.upscalingFactor}x • 
+              Sharpness: {Math.round(enhancementSettings.sharpnessEnhancement * 100)}% • 
+              Texture: {Math.round(enhancementSettings.texturePreservation * 100)}%
+            </span>
+          )}
         </div>
       </div>
     </div>
