@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { motion } from "framer-motion"; // Add this import
+import { motion } from "framer-motion";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { EnhancementOptions } from "@/components/upload/EnhancementSettings";
@@ -8,11 +8,13 @@ import { toast } from "sonner";
 import { UploadForm } from "@/components/upload/UploadForm";
 import { EnhancementResult } from "@/components/upload/EnhancementResult";
 import { EmptyState } from "@/components/upload/EmptyState";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Upload = () => {
-  const [inputFile, setInputFile] = useState<File | null>(null);
-  const [inputPreviewUrl, setInputPreviewUrl] = useState<string | null>(null);
-  const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
+  const [inputFiles, setInputFiles] = useState<File[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
+  const [inputPreviewUrls, setInputPreviewUrls] = useState<string[]>([]);
+  const [enhancedImageUrls, setEnhancedImageUrls] = useState<string[]>([]);
   const [isLicensePlateMode, setIsLicensePlateMode] = useState(false);
   const [licensePlateMode, setLicensePlateMode] = useState<"standard" | "advanced">("standard");
   const [enhancementOptions, setEnhancementOptions] = useState<EnhancementOptions>({
@@ -27,27 +29,36 @@ const Upload = () => {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      const file = event.target.files[0];
-      setInputFile(file);
+      const files = Array.from(event.target.files);
+      setInputFiles(files);
+      setCurrentFileIndex(0);
       
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setInputPreviewUrl(e.target?.result as string);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        setInputPreviewUrl(null);
-        toast.error("Please select an image file");
-      }
+      const previewUrls: string[] = [];
+      files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            previewUrls.push(e.target?.result as string);
+            if (previewUrls.length === files.length) {
+              setInputPreviewUrls(previewUrls);
+            }
+          };
+          reader.readAsDataURL(file);
+        } else {
+          toast.error(`File ${file.name} is not an image`);
+        }
+      });
 
-      setEnhancedImageUrl(null);
+      setEnhancedImageUrls([]);
     }
   };
 
   const handleProcessingComplete = (resultUrl: string) => {
-    setEnhancedImageUrl(resultUrl);
-    toast.success("Enhancement completed successfully!");
+    setEnhancedImageUrls(prev => [...prev, resultUrl]);
+    if (currentFileIndex < inputFiles.length - 1) {
+      setCurrentFileIndex(prev => prev + 1);
+    }
+    toast.success(`Enhancement completed for image ${currentFileIndex + 1}/${inputFiles.length}`);
   };
 
   return (
@@ -77,9 +88,10 @@ const Upload = () => {
             <div className="grid gap-8 md:grid-cols-2">
               <div>
                 <UploadForm
-                  inputFile={inputFile}
-                  inputPreviewUrl={inputPreviewUrl}
-                  enhancedImageUrl={enhancedImageUrl}
+                  inputFiles={inputFiles}
+                  inputPreviewUrls={inputPreviewUrls}
+                  currentFileIndex={currentFileIndex}
+                  enhancedImageUrls={enhancedImageUrls}
                   isLicensePlateMode={isLicensePlateMode}
                   licensePlateMode={licensePlateMode}
                   enhancementOptions={enhancementOptions}
@@ -87,25 +99,26 @@ const Upload = () => {
                   onProcessingComplete={handleProcessingComplete}
                   setIsLicensePlateMode={setIsLicensePlateMode}
                   setLicensePlateMode={setLicensePlateMode}
-                  setInputFile={setInputFile}
-                  setInputPreviewUrl={setInputPreviewUrl}
-                  setEnhancedImageUrl={setEnhancedImageUrl}
+                  setInputFiles={setInputFiles}
+                  setInputPreviewUrls={setInputPreviewUrls}
+                  setEnhancedImageUrls={setEnhancedImageUrls}
                   setEnhancementOptions={setEnhancementOptions}
                 />
               </div>
               
               <div>
-                {enhancedImageUrl && inputPreviewUrl ? (
+                {enhancedImageUrls.length > 0 && inputPreviewUrls.length > 0 ? (
                   <EnhancementResult
-                    inputPreviewUrl={inputPreviewUrl}
-                    enhancedImageUrl={enhancedImageUrl}
+                    inputPreviewUrls={inputPreviewUrls}
+                    enhancedImageUrls={enhancedImageUrls}
+                    currentFileIndex={currentFileIndex}
                     isLicensePlateMode={isLicensePlateMode}
                     licensePlateMode={licensePlateMode}
                     enhancementOptions={enhancementOptions}
                   />
                 ) : (
                   <EmptyState 
-                    inputFile={inputFile}
+                    inputFiles={inputFiles}
                     isLicensePlateMode={isLicensePlateMode}
                   />
                 )}
