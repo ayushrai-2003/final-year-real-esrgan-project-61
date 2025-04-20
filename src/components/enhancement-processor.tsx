@@ -254,46 +254,52 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        // Create a canvas to work with
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error("Failed to get canvas context"));
-          return;
+        try {
+          // Create a canvas to work with
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error("Failed to get canvas context"));
+            return;
+          }
+          
+          // Draw the original image to the canvas
+          ctx.drawImage(img, 0, 0);
+          
+          // Apply all enhancement steps - calling functions properly
+          let processedCanvas = canvas;
+          
+          // Apply noise reduction
+          processedCanvas = reduceNoise(processedCanvas, enhancementSettings.noiseReduction);
+          
+          // Apply sharpness enhancement
+          processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement);
+          
+          // Apply color correction if enabled
+          if (enhancementSettings.colorCorrection) {
+            processedCanvas = enhanceColors(processedCanvas, enhancementSettings.texturePreservation);
+          }
+          
+          // Apply contrast enhancement
+          processedCanvas = enhanceContrast(processedCanvas, enhancementSettings.contrastEnhancement);
+          
+          // Upscale the image
+          processedCanvas = upscaleImage(processedCanvas, enhancementSettings.upscalingFactor);
+          
+          // Convert back to data URL
+          const enhancedImageUrl = processedCanvas.toDataURL('image/png');
+          resolve(enhancedImageUrl);
+        } catch (error) {
+          console.error("Error processing image:", error);
+          reject(error);
         }
-        
-        // Draw the original image to the canvas
-        ctx.drawImage(img, 0, 0);
-        
-        // Apply all enhancement steps
-        let processedCanvas = canvas;
-        
-        // Apply noise reduction
-        processedCanvas = reduceNoise(processedCanvas, enhancementSettings.noiseReduction);
-        
-        // Apply sharpness enhancement
-        processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement);
-        
-        // Apply color correction if enabled
-        if (enhancementSettings.colorCorrection) {
-          processedCanvas = enhanceColors(processedCanvas, enhancementSettings.texturePreservation);
-        }
-        
-        // Apply contrast enhancement
-        processedCanvas = enhanceContrast(processedCanvas, enhancementSettings.contrastEnhancement);
-        
-        // Upscale the image
-        processedCanvas = upscaleImage(processedCanvas, enhancementSettings.upscalingFactor);
-        
-        // Convert back to data URL
-        const enhancedImageUrl = processedCanvas.toDataURL('image/png');
-        resolve(enhancedImageUrl);
       };
       
-      img.onerror = () => {
+      img.onerror = (error) => {
+        console.error("Error loading image:", error);
         reject(new Error("Failed to load image"));
       };
       
@@ -304,7 +310,8 @@ export function EnhancementProcessor({ inputImage, onProcessingComplete }: Proce
           img.src = e.target.result.toString();
         }
       };
-      reader.onerror = () => {
+      reader.onerror = (error) => {
+        console.error("Error reading file:", error);
         reject(new Error("Failed to read file"));
       };
       reader.readAsDataURL(file);
