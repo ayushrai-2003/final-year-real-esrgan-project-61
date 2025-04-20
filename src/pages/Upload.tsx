@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { motion } from "framer-motion"; // Add this import
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { EnhancementOptions } from "@/components/upload/EnhancementSettings";
