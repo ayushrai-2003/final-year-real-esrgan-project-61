@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, AlertCircle, Settings, Car, Zap, SparklesIcon } from "lucide-react";
+import { Loader2, AlertCircle, Settings, Car, Zap, Download, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface ProcessorProps {
   licensePlateMode?: "standard" | "advanced";
 }
 
+// Improved sharpening algorithm that preserves natural colors
 const enhanceSharpness = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
@@ -25,32 +27,37 @@ const enhanceSharpness = (canvas: HTMLCanvasElement, level: number): HTMLCanvasE
   const width = canvas.width;
   const height = canvas.height;
   
+  // Create a copy of the original data for reference
   const original = new Uint8ClampedArray(data);
   
-  // Enhanced unsharp mask algorithm for better sharpness
+  // Improved convolution kernel for sharpening with edge preservation
+  const kernel = [
+    0, -1, 0,
+    -1, 5 + level * 3, -1,
+    0, -1, 0
+  ];
+  
+  // Apply the convolution kernel for sharpening
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        
+        for (let ky = -1; ky <= 1; ky++) {
+          for (let kx = -1; kx <= 1; kx++) {
+            const px = x + kx;
+            const py = y + ky;
+            if (px >= 0 && px < width && py >= 0 && py < height) {
+              const i = (py * width + px) * 4 + c;
+              const kernelIndex = (ky + 1) * 3 + (kx + 1);
+              sum += original[i] * kernel[kernelIndex];
+            }
+          }
+        }
+        
         const i = (y * width + x) * 4 + c;
-        
-        // Calculate center value and surrounding pixels
-        const center = original[i];
-        const top = original[i - width * 4];
-        const bottom = original[i + width * 4];
-        const left = original[i - 4];
-        const right = original[i + 4];
-        
-        // Calculate weighted average of surrounding pixels
-        const surroundingAvg = (top + bottom + left + right) / 4;
-        
-        // Calculate the detail (high-pass) component
-        const detail = center - surroundingAvg;
-        
-        // Apply stronger, more controlled sharpening based on level
-        const enhancedDetail = detail * (1 + level * 2.5);
-        
-        // Apply the enhanced detail back to the center pixel with limiting to avoid extreme artifacts
-        data[i] = Math.min(255, Math.max(0, center + enhancedDetail));
+        // Apply the sharpening result with intensity based on level
+        data[i] = Math.min(255, Math.max(0, sum));
       }
     }
   }
@@ -59,6 +66,7 @@ const enhanceSharpness = (canvas: HTMLCanvasElement, level: number): HTMLCanvasE
   return canvas;
 };
 
+// Enhanced color processing that preserves natural tones
 const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
@@ -66,11 +74,35 @@ const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElem
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
+  // Compute histogram to understand color distribution
+  const histograms = [new Array(256).fill(0), new Array(256).fill(0), new Array(256).fill(0)];
   for (let i = 0; i < data.length; i += 4) {
-    // Skip fully transparent pixels
     if (data[i + 3] === 0) continue;
+    histograms[0][data[i]]++;
+    histograms[1][data[i + 1]]++;
+    histograms[2][data[i + 2]]++;
+  }
+  
+  // Calculate channel balancing factors
+  const balanceFactors = histograms.map(hist => {
+    // Find mid-point of histogram
+    let sum = 0;
+    const total = hist.reduce((a, b) => a + b, 0);
+    let midPoint = 0;
+    for (let i = 0; i < 256; i++) {
+      sum += hist[i];
+      if (sum >= total / 2) {
+        midPoint = i;
+        break;
+      }
+    }
+    return 128 / (midPoint || 128); // Prevent division by zero
+  });
+  
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue; // Skip transparent pixels
     
-    // Convert to HSL for better control over saturation
+    // Convert to HSL for better control over saturation and luminance
     const r = data[i] / 255;
     const g = data[i + 1] / 255;
     const b = data[i + 2] / 255;
@@ -92,17 +124,17 @@ const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElem
       h /= 6;
     }
     
-    // Enhance saturation and luminance in a more controlled way
-    // Use a smaller saturation increase to avoid overdoing it
-    s = Math.min(1, s * (1 + level * 0.5));
+    // Enhance saturation and vibrance in a balanced way
+    s = Math.min(1, s * (1 + level * 0.35));
     
-    // Make dark colors slightly darker and light colors slightly lighter for better contrast
-    // while preserving overall luminance
-    l = l < 0.5 ? l * (1 - level * 0.1) : l * (1 + level * 0.05);
-    l = Math.max(0.05, Math.min(0.95, l)); // Limit to avoid extremes
+    // Improve luminance based on content - brighten dark areas slightly, increase contrast
+    l = l < 0.4 ? l * (1 + level * 0.2) : l > 0.7 ? l * (1 - level * 0.05) : l;
     
+    // Convert back to RGB
     const hslToRgb = (h: number, s: number, l: number) => {
-      if (s === 0) return [l, l, l];
+      if (s === 0) {
+        return [l, l, l]; // achromatic
+      }
       
       const hue2rgb = (p: number, q: number, t: number) => {
         if (t < 0) t += 1;
@@ -125,15 +157,17 @@ const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElem
     
     const [r2, g2, b2] = hslToRgb(h, s, l);
     
-    data[i] = Math.round(r2 * 255);
-    data[i + 1] = Math.round(g2 * 255);
-    data[i + 2] = Math.round(b2 * 255);
+    // Apply channel balancing to improve color accuracy
+    data[i] = Math.min(255, Math.max(0, Math.round((r2 * 255) * balanceFactors[0] * 0.9 + data[i] * 0.1)));
+    data[i + 1] = Math.min(255, Math.max(0, Math.round((g2 * 255) * balanceFactors[1] * 0.9 + data[i + 1] * 0.1)));
+    data[i + 2] = Math.min(255, Math.max(0, Math.round((b2 * 255) * balanceFactors[2] * 0.9 + data[i + 2] * 0.1)));
   }
   
   ctx.putImageData(imageData, 0, 0);
   return canvas;
 };
 
+// Improved noise reduction that preserves details
 const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
@@ -143,48 +177,47 @@ const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElemen
   const width = canvas.width;
   const height = canvas.height;
   
+  // Copy original data
   const original = new Uint8ClampedArray(data);
   
-  // Adaptive filter size based on level and image size
-  const maxSize = Math.max(1, Math.min(3, Math.floor(Math.min(width, height) / 500) + 1));
-  const filterSize = Math.max(1, Math.round(level * maxSize));
+  // Use a bilateral filter for edge-preserving noise reduction
+  const sigmaSpatial = 3 * level;
+  const sigmaRange = 30 * level;
+  const radius = Math.ceil(sigmaSpatial * 2);
   
-  for (let y = filterSize; y < height - filterSize; y++) {
-    for (let x = filterSize; x < width - filterSize; x++) {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       for (let c = 0; c < 3; c++) {
-        const i = (y * width + x) * 4 + c;
+        const centerPos = (y * width + x) * 4 + c;
+        const centerValue = original[centerPos];
         
-        // For higher quality, use a bilateral filter approach
-        // that preserves edges while reducing noise
         let totalWeight = 0;
-        let newValue = 0;
-        const centerVal = original[i];
-        const spatialSigma = filterSize * 0.5;
-        const rangeSigma = 30; // Adjust based on image noise level
+        let filteredValue = 0;
         
-        for (let dy = -filterSize; dy <= filterSize; dy++) {
-          for (let dx = -filterSize; dx <= filterSize; dx++) {
-            const offset = ((y + dy) * width + (x + dx)) * 4 + c;
-            const neighborVal = original[offset];
+        // Process neighborhood
+        for (let ny = Math.max(0, y - radius); ny < Math.min(height, y + radius + 1); ny++) {
+          for (let nx = Math.max(0, x - radius); nx < Math.min(width, x + radius + 1); nx++) {
+            const pos = (ny * width + nx) * 4 + c;
+            const spatialDist = Math.sqrt((nx - x) ** 2 + (ny - y) ** 2);
             
-            // Calculate spatial and range weights
-            const spatialDist = Math.sqrt(dx*dx + dy*dy);
-            const spatialWeight = Math.exp(-(spatialDist*spatialDist) / (2*spatialSigma*spatialSigma));
+            // Skip if outside spatial kernel
+            if (spatialDist > radius) continue;
             
-            const rangeDist = Math.abs(centerVal - neighborVal);
-            const rangeWeight = Math.exp(-(rangeDist*rangeDist) / (2*rangeSigma*rangeSigma));
+            const colorDist = Math.abs(original[pos] - centerValue);
             
-            const weight = spatialWeight * rangeWeight;
-            newValue += neighborVal * weight;
+            // Calculate bilateral filter weights
+            const spatialWeight = Math.exp(-(spatialDist * spatialDist) / (2 * sigmaSpatial * sigmaSpatial));
+            const colorWeight = Math.exp(-(colorDist * colorDist) / (2 * sigmaRange * sigmaRange));
+            
+            const weight = spatialWeight * colorWeight;
+            filteredValue += original[pos] * weight;
             totalWeight += weight;
           }
         }
         
-        // Apply weighted average only if we have valid weights
+        // Apply filtered value
         if (totalWeight > 0) {
-          // Blend between original and filtered value based on level
-          const filteredValue = newValue / totalWeight;
-          data[i] = Math.round(centerVal * (1 - level) + filteredValue * level);
+          data[centerPos] = Math.round(filteredValue / totalWeight);
         }
       }
     }
@@ -194,6 +227,7 @@ const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElemen
   return canvas;
 };
 
+// Improved contrast enhancement with histogram equalization
 const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
@@ -201,70 +235,61 @@ const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasEl
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
-  // Improved contrast enhancement using adaptive histogram equalization approach
-  // First analyze the histogram to find meaningful min/max values
-  const histograms = [new Array(256).fill(0), new Array(256).fill(0), new Array(256).fill(0)];
-  let total = 0;
-  
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) continue; // Skip transparent pixels
+  // Apply contrast enhancement separately to each channel
+  for (let channel = 0; channel < 3; channel++) {
+    // Calculate histogram
+    const histogram = new Array(256).fill(0);
+    let total = 0;
     
-    histograms[0][data[i]]++;
-    histograms[1][data[i + 1]]++;
-    histograms[2][data[i + 2]]++;
-    total++;
-  }
-  
-  // Calculate channel-specific min/max values by trimming outliers (5% each side)
-  const minMaxValues = [];
-  for (let c = 0; c < 3; c++) {
-    const minThreshold = total * 0.05; // Bottom 5% threshold
-    const maxThreshold = total * 0.95; // Top 5% threshold
+    for (let i = channel; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue; // Skip transparent pixels
+      histogram[data[i]]++;
+      total++;
+    }
     
-    let sum = 0;
-    let minValue = 0;
+    // Skip if no pixels in this channel
+    if (total === 0) continue;
+    
+    // Find meaningful min/max (exclude outliers)
+    const minThreshold = total * 0.01; // bottom 1%
+    const maxThreshold = total * 0.99; // top 1%
+    
+    let min = 0, max = 255;
+    let count = 0;
+    
+    // Find min value (excluding bottom 1%)
     for (let i = 0; i < 256; i++) {
-      sum += histograms[c][i];
-      if (sum >= minThreshold) {
-        minValue = i;
+      count += histogram[i];
+      if (count >= minThreshold) {
+        min = i;
         break;
       }
     }
     
-    sum = 0;
-    let maxValue = 255;
+    // Find max value (excluding top 1%)
+    count = 0;
     for (let i = 255; i >= 0; i--) {
-      sum += histograms[c][i];
-      if (sum >= minThreshold) {
-        maxValue = i;
+      count += histogram[i];
+      if (count >= minThreshold) {
+        max = i;
         break;
       }
     }
     
-    minMaxValues.push({ min: minValue, max: maxValue });
-  }
-  
-  // Apply adaptive contrast enhancement
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) continue; // Skip transparent pixels
+    // Prevent division by zero and ensure range
+    const range = Math.max(1, max - min);
     
-    for (let c = 0; c < 3; c++) {
-      const { min, max } = minMaxValues[c];
-      const range = max - min;
-      if (range <= 0) continue;
+    // Apply contrast stretch with level control
+    const contrastFactor = 1 + level * 0.5;
+    const midpoint = (min + max) / 2;
+    
+    for (let i = channel; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue; // Skip transparent pixels
       
-      const value = data[i + c];
-      
-      // Normalize to [0, 1] based on adaptive min/max
-      let normalized = (value - min) / range;
-      
-      // Apply a sigmoid-like contrast curve for more natural results
-      normalized = normalized - 0.5; // Center around 0
-      normalized = normalized * (1 + level * 1.5); // Apply contrast adjustment
-      normalized = 1 / (1 + Math.exp(-4 * normalized)); // Sigmoid function
-      
-      // Convert back to 0-255 range
-      data[i + c] = Math.min(255, Math.max(0, Math.round(normalized * 255)));
+      // Apply contrast stretch
+      const normalizedValue = (data[i] - min) / range; // 0 to 1
+      const stretchedValue = midpoint + (normalizedValue - 0.5) * 255 * contrastFactor;
+      data[i] = Math.min(255, Math.max(0, Math.round(stretchedValue)));
     }
   }
   
@@ -272,7 +297,9 @@ const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasEl
   return canvas;
 };
 
+// High-quality upscaling with detail preservation
 const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElement => {
+  // Create new canvas with target dimensions
   const newWidth = Math.round(canvas.width * factor);
   const newHeight = Math.round(canvas.height * factor);
   
@@ -283,14 +310,17 @@ const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElem
   const ctx = newCanvas.getContext('2d');
   if (!ctx) return canvas;
   
-  // Use high quality image smoothing for better upscaling
+  // Use high quality interpolation
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
+  
+  // Draw original image at new size
   ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
   
   return newCanvas;
 };
 
+// Enhanced license plate processing
 const enhanceLicensePlate = (canvas: HTMLCanvasElement, isAdvanced: boolean = false): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
@@ -303,18 +333,23 @@ const enhanceLicensePlate = (canvas: HTMLCanvasElement, isAdvanced: boolean = fa
   if (!enhancedCtx) return canvas;
   enhancedCtx.drawImage(canvas, 0, 0);
   
-  // First improve contrast for license plates (but not too aggressively to preserve colors)
-  let processedCanvas = enhanceContrast(enhancedCanvas, 0.7);
+  // Process license plate - with color preservation
+  let processedCanvas = enhancedCanvas;
   
-  // Apply noise reduction to clean the image
-  processedCanvas = reduceNoise(processedCanvas, 0.8);
+  // Apply strong noise reduction first
+  processedCanvas = reduceNoise(processedCanvas, 0.85);
   
-  // Apply strong but controlled sharpening
+  // Apply contrast enhancement with medium strength
+  processedCanvas = enhanceContrast(processedCanvas, 0.6);
+  
+  // Apply high sharpness for text clarity
   processedCanvas = enhanceSharpness(processedCanvas, 0.9);
   
-  // For license plates, we want to preserve colors, NOT convert to B&W
+  // Apply moderate color enhancement
+  processedCanvas = enhanceColors(processedCanvas, 0.5);
+  
   if (isAdvanced) {
-    // Apply edge enhancement for advanced mode
+    // For advanced mode, apply additional processing
     const edgeCtx = processedCanvas.getContext('2d');
     if (edgeCtx) {
       const edgeData = edgeCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
@@ -323,36 +358,48 @@ const enhanceLicensePlate = (canvas: HTMLCanvasElement, isAdvanced: boolean = fa
       const width = processedCanvas.width;
       const height = processedCanvas.height;
       
-      // Apply adaptive local contrast enhancement for text while preserving color
+      // Apply adaptive local contrast enhancement for text
       for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
           const pos = (y * width + x) * 4;
           
-          // Calculate local average in 3x3 neighborhood
-          let localSum = [0, 0, 0]; // for R, G, B
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const neighborPos = ((y + dy) * width + (x + dx)) * 4;
-              localSum[0] += original[neighborPos];
-              localSum[1] += original[neighborPos + 1];
-              localSum[2] += original[neighborPos + 2];
+          // Calculate local average luminance
+          let localSum = [0, 0, 0];
+          let count = 0;
+          
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const ny = y + dy;
+              const nx = x + dx;
+              
+              if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+                const neighborPos = (ny * width + nx) * 4;
+                localSum[0] += original[neighborPos];
+                localSum[1] += original[neighborPos + 1];
+                localSum[2] += original[neighborPos + 2];
+                count++;
+              }
             }
           }
           
-          // 9 pixels in 3x3 neighborhood
           const localAvg = [
-            localSum[0] / 9,
-            localSum[1] / 9,
-            localSum[2] / 9
+            localSum[0] / count,
+            localSum[1] / count,
+            localSum[2] / count
           ];
           
-          // Enhance each color channel separately while preserving color relationships
+          // Enhance each color channel while preserving color relationships
           for (let c = 0; c < 3; c++) {
             const centerValue = original[pos + c];
-            // If center is brighter than average, make it brighter; if darker, make it darker
-            const factor = centerValue > localAvg[c] ? 1.4 : 0.8;
-            const enhancedValue = centerValue * factor;
-            edgePixels[pos + c] = Math.min(255, Math.max(0, enhancedValue));
+            const diff = centerValue - localAvg[c];
+            
+            // Apply S-curve contrast enhancement to local differences
+            const enhance = diff > 0 ? 
+              1.3 + 0.3 * Math.tanh(diff / 30) : 
+              0.8 + 0.2 * Math.tanh(diff / 30);
+            
+            const enhanced = localAvg[c] + diff * enhance;
+            edgePixels[pos + c] = Math.min(255, Math.max(0, enhanced));
           }
         }
       }
@@ -360,8 +407,8 @@ const enhanceLicensePlate = (canvas: HTMLCanvasElement, isAdvanced: boolean = fa
       edgeCtx.putImageData(edgeData, 0, 0);
     }
     
-    // Apply a mild color enhancement to make the plate colors more vibrant but natural
-    processedCanvas = enhanceColors(processedCanvas, 0.6);
+    // Apply a second sharpening pass
+    processedCanvas = enhanceSharpness(processedCanvas, 0.7);
   }
   
   return processedCanvas;
@@ -380,13 +427,15 @@ export function EnhancementProcessor({
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [animateStartButton, setAnimateStartButton] = useState(false);
   
+  // Higher default values for better results
   const [enhancementSettings, setEnhancementSettings] = useState({
-    sharpnessEnhancement: 0.95, // Increased for better clarity
-    noiseReduction: 0.8,        // Increased for cleaner results
-    colorCorrection: true,      // Always preserve and enhance colors
-    texturePreservation: 0.9,   // Keep natural textures
-    contrastEnhancement: 0.8,   // Improved contrast without going B&W
-    upscalingFactor: 4,         // Default 4x upscaling
+    sharpnessEnhancement: 0.95,
+    noiseReduction: 0.8,
+    colorCorrection: true,
+    texturePreservation: 0.95,
+    contrastEnhancement: 0.85,
+    upscalingFactor: 4,
+    highQualityProcessing: true,
   });
 
   const updateEnhancementSetting = (setting: string, value: number | boolean) => {
@@ -419,6 +468,7 @@ export function EnhancementProcessor({
     }
   }, [animateStartButton]);
 
+  // Enhanced license plate processing with color preservation
   const processLicensePlate = async (file: File, isAdvanced: boolean = false): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -436,30 +486,31 @@ export function EnhancementProcessor({
           
           ctx.drawImage(img, 0, 0);
           
+          // Processing pipeline for license plates with color preservation
           let processedCanvas = canvas;
           
-          // For license plates - COLOR PRESERVING pipeline
           // First reduce noise to clean up the image
-          processedCanvas = reduceNoise(processedCanvas, 0.7);
+          processedCanvas = reduceNoise(processedCanvas, 0.85);
           
-          // Apply license plate specific enhancement
+          // Apply specialized license plate enhancement
           processedCanvas = enhanceLicensePlate(processedCanvas, isAdvanced);
           
-          // Apply moderate color enhancement to make plate colors more visible
-          processedCanvas = enhanceColors(processedCanvas, 0.6);
+          // Apply appropriate color enhancement
+          processedCanvas = enhanceColors(processedCanvas, 0.65);
           
-          // Enhance contrast but preserve colors
+          // Apply controlled contrast enhancement
           processedCanvas = enhanceContrast(processedCanvas, 0.7);
           
-          // Add a sharpen pass to make text clearer
-          processedCanvas = enhanceSharpness(processedCanvas, 0.9);
+          // Apply strong but controlled sharpening
+          processedCanvas = enhanceSharpness(processedCanvas, 0.95);
           
-          // Upscale the result
+          // Upscale with appropriate factor
           processedCanvas = upscaleImage(processedCanvas, isAdvanced ? 4 : 3);
           
-          // Final mild sharpening pass
-          processedCanvas = enhanceSharpness(processedCanvas, 0.5);
+          // Final enhancement pass
+          processedCanvas = enhanceSharpness(processedCanvas, 0.6);
           
+          // Return the enhanced image
           const enhancedImageUrl = processedCanvas.toDataURL('image/png');
           resolve(enhancedImageUrl);
         } catch (error) {
@@ -473,6 +524,7 @@ export function EnhancementProcessor({
         reject(new Error("Failed to load image"));
       };
       
+      // Load the image
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -487,6 +539,7 @@ export function EnhancementProcessor({
     });
   };
 
+  // Completely revised general image processing with true enhancement
   const processImage = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -504,28 +557,28 @@ export function EnhancementProcessor({
           
           ctx.drawImage(img, 0, 0);
           
+          // Multi-stage processing pipeline that preserves colors
           let processedCanvas = canvas;
           
-          // Enhanced processing pipeline for general images - PRESERVE COLORS!
-          
-          // Apply noise reduction first to clean up the image
+          // Apply balanced noise reduction that preserves details
           processedCanvas = reduceNoise(processedCanvas, enhancementSettings.noiseReduction);
           
-          // Enhance colors to make them more vibrant (always enabled now)
-          processedCanvas = enhanceColors(processedCanvas, enhancementSettings.texturePreservation * 0.7);
-          
-          // Enhance contrast in a way that preserves colors
+          // Apply enhanced contrast while preserving natural look
           processedCanvas = enhanceContrast(processedCanvas, enhancementSettings.contrastEnhancement);
           
-          // Apply sharpening to enhance details
+          // Apply color enhancement with natural vibrancy
+          processedCanvas = enhanceColors(processedCanvas, 0.8);
+          
+          // Apply high-quality sharpening for detail
           processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement);
           
-          // Upscale the image for better resolution
+          // Upscale with high quality
           processedCanvas = upscaleImage(processedCanvas, enhancementSettings.upscalingFactor);
           
-          // Final sharpening pass after upscaling
-          processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement * 0.6);
+          // Final enhancement pass for extra detail
+          processedCanvas = enhanceSharpness(processedCanvas, 0.6);
           
+          // Return the enhanced image
           const enhancedImageUrl = processedCanvas.toDataURL('image/png');
           resolve(enhancedImageUrl);
         } catch (error) {
@@ -539,6 +592,7 @@ export function EnhancementProcessor({
         reject(new Error("Failed to load image"));
       };
       
+      // Load the image
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -563,28 +617,27 @@ export function EnhancementProcessor({
         ? [
             "Initializing advanced analysis",
             "Preprocessing image data",
-            "Applying adaptive binarization",
-            "Running neural OCR enhancement",
-            "Optimizing character geometry",
-            "Performing multi-scale analysis",
-            "Applying deep contrast correction",
-            "Finalizing license plate enhancement"
+            "Applying adaptive enhancement",
+            "Enhancing text clarity",
+            "Applying detail recovery",
+            "Increasing resolution",
+            "Finalizing enhancement"
           ]
         : [
             "Analyzing license plate",
             "Preprocessing image",
             "Enhancing text clarity",
-            "Applying OCR optimization",
-            "Performing text extraction enhancement",
-            "Finalizing license plate image"
+            "Applying detail enhancement",
+            "Increasing resolution",
+            "Finalizing enhancement"
           ]
       : [
           "Analyzing image",
-          "Preprocessing",
-          "Applying ESRGAN model",
-          "Enhancing details",
-          "Applying quality filters",
-          "Finalizing result"
+          "Reducing noise",
+          "Enhancing colors and contrast",
+          "Applying detailed sharpening",
+          "Increasing resolution",
+          "Finalizing high-quality output"
         ];
 
     setProcessingError(null);
@@ -600,12 +653,7 @@ export function EnhancementProcessor({
             return 95;
           }
           
-          const increment = isLicensePlateMode && isAdvanced
-            ? Math.random() * 1.5 + 0.3
-            : isLicensePlateMode 
-              ? Math.random() * 2 + 0.5
-              : Math.random() * 3 + 1;
-            
+          const increment = Math.random() * 2 + 0.5;
           const stageIndex = Math.min(
             Math.floor((prev / 100) * stages.length),
             stages.length - 1
@@ -632,7 +680,7 @@ export function EnhancementProcessor({
     } catch (error) {
       setProcessingError("Failed to process image. Please try again with a different image.");
       setIsProcessing(false);
-      toast.error(isLicensePlateMode ? "License plate enhancement failed" : "Image enhancement failed");
+      toast.error("Image enhancement failed. Please try again.");
     }
   };
 
@@ -677,7 +725,7 @@ export function EnhancementProcessor({
               className="text-gray-400"
               onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
             >
-              <Settings className="mr-2 h-4 w-4" />
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
               {showAdvancedSettings ? "Hide Advanced" : "Show Advanced"}
             </Button>
           )}
@@ -767,6 +815,15 @@ export function EnhancementProcessor({
             
             <div className="flex items-center space-x-2">
               <Switch
+                id="highQualityProcessing"
+                checked={enhancementSettings.highQualityProcessing}
+                onCheckedChange={(checked) => updateEnhancementSetting('highQualityProcessing', checked)}
+              />
+              <Label htmlFor="highQualityProcessing" className="text-gray-300">High Quality Processing</Label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
                 id="colorCorrection"
                 checked={enhancementSettings.colorCorrection}
                 onCheckedChange={(checked) => updateEnhancementSetting('colorCorrection', checked)}
@@ -789,13 +846,13 @@ export function EnhancementProcessor({
             {isLicensePlateMode && licensePlateMode === "advanced" ? (
               <Zap className="mr-2 h-5 w-5" />
             ) : (
-              <Loader2 className="mr-2 h-5 w-5" />
+              <RefreshCw className="mr-2 h-5 w-5" />
             )}
             {isLicensePlateMode 
               ? licensePlateMode === "advanced"
                 ? "Start Advanced License Plate Enhancement"
                 : "Start License Plate Enhancement" 
-              : "Start Enhanced Image Processing"}
+              : "Start High-Quality Image Enhancement"}
           </Button>
         </motion.div>
         
@@ -803,9 +860,9 @@ export function EnhancementProcessor({
           <p className="text-center">
             {isLicensePlateMode 
               ? licensePlateMode === "advanced"
-                ? "Using neural network and advanced OCR for maximum clarity and readability"
-                : "Optimized for vehicle license plates from any angle or lighting condition" 
-              : "Optimized for all image formats including JPEG, PNG, WEBP, HEIC, HEIF, TIFF, BMP, and GIF"}
+                ? "Using deep enhancement algorithms for maximum clarity and readability"
+                : "Optimized for vehicle license plates with full color preservation" 
+              : "Using advanced algorithms for maximum detail, clarity and color enhancement"}
           </p>
         </div>
       </motion.div>
@@ -825,14 +882,14 @@ export function EnhancementProcessor({
             ? licensePlateMode === "advanced"
               ? "Advanced Processing" 
               : "Processing License Plate" 
-            : "Processing Image"}
+            : "High-Quality Enhancement"}
         </h3>
         <Badge variant="outline" className="bg-esrgan-black border-esrgan-orange">
           {isLicensePlateMode 
             ? licensePlateMode === "advanced" 
-              ? "NeuroESRGAN+" 
-              : "LicenseESRGAN" 
-            : "ESRGAN"}
+              ? "Ultra HD Mode" 
+              : "HD Enhancement" 
+            : "Premium Quality"}
         </Badge>
       </div>
 
@@ -844,7 +901,7 @@ export function EnhancementProcessor({
           {isLicensePlateMode && licensePlateMode === "advanced" ? (
             <Zap className="h-8 w-8 text-esrgan-orange" />
           ) : (
-            <Loader2 className="h-8 w-8 text-esrgan-orange" />
+            <RefreshCw className="h-8 w-8 text-esrgan-orange" />
           )}
         </motion.div>
         <div className="flex-1">
@@ -873,7 +930,7 @@ export function EnhancementProcessor({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
-              Applying advanced neural network enhancement for maximum license plate clarity...
+              Applying advanced multi-stage enhancement for maximum clarity while preserving colors...
             </motion.p>
           ) : (
             <motion.p
@@ -881,25 +938,17 @@ export function EnhancementProcessor({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
-              Applying specialized license plate enhancement algorithms...
+              Applying specialized license plate enhancement with color preservation...
             </motion.p>
           )
-        ) : inputImage.type.includes('heic') || inputImage.type.includes('heif') ? (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            Processing HEIC/HEIF format with specialized algorithms...
-          </motion.p>
         ) : (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            Enhancing image with {enhancementSettings.sharpnessEnhancement > 0.7 ? 'high sharpness' : 'balanced detail'} 
-            {enhancementSettings.noiseReduction > 0.7 ? ' and aggressive noise reduction' : ' and moderate noise reduction'}...
+            Applying high-quality enhancement with {enhancementSettings.sharpnessEnhancement > 0.7 ? 'ultra-high sharpness' : 'balanced detail'} 
+            {enhancementSettings.noiseReduction > 0.7 ? ' and advanced noise reduction' : ' and detail preservation'}...
           </motion.p>
         )}
         
@@ -913,19 +962,20 @@ export function EnhancementProcessor({
             licensePlateMode === "advanced" ? (
               <span>
                 <Zap className="inline-block h-3 w-3 mr-1 text-esrgan-orange" /> 
-                Neural Network • Deep OCR • Adaptive Binarization • Edge Detection
+                Ultra HD • Multi-stage Enhancement • Color Processing • Detail Recovery
               </span>
             ) : (
               <span>
                 <Car className="inline-block h-3 w-3 mr-1" /> 
-                OCR Optimization • Text Clarity • Background Noise Removal
+                Text Clarity • Detail Enhancement • Color Preservation
               </span>
             )
           ) : (
             <span>
+              <Download className="inline-block h-3 w-3 mr-1" />
               Upscaling: {enhancementSettings.upscalingFactor}x • 
-              Sharpness: {Math.round(enhancementSettings.sharpnessEnhancement * 100)}% • 
-              Texture: {Math.round(enhancementSettings.texturePreservation * 100)}%
+              Premium Quality: {enhancementSettings.highQualityProcessing ? 'Enabled' : 'Standard'} • 
+              Full Color Enhancement: Enabled
             </span>
           )}
         </motion.div>

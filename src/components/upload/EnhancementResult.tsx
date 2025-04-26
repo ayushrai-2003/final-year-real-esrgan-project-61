@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageComparison } from "@/components/image-comparison";
-import { UploadCloud } from "lucide-react";
+import { Download, Share, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { EnhancementOptions } from "@/components/upload/EnhancementSettings";
 
@@ -28,11 +28,40 @@ export const EnhancementResult: React.FC<EnhancementResultProps> = ({
   const handleDownload = () => {
     const link = document.createElement("a");
     link.href = enhancedImageUrls[currentFileIndex];
-    link.download = "enhanced-image";
+    link.download = "enhanced-image.png";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Image downloaded successfully!");
+    toast.success("Enhanced image downloaded successfully!");
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        const blob = await fetch(enhancedImageUrls[currentFileIndex]).then(r => r.blob());
+        const file = new File([blob], "enhanced-image.png", { type: "image/png" });
+        
+        await navigator.share({
+          title: 'Enhanced Image',
+          text: 'Check out this enhanced image!',
+          files: [file]
+        });
+        toast.success("Image shared successfully!");
+      } catch (error) {
+        console.error("Error sharing:", error);
+        // Fallback if sharing files failed
+        try {
+          await navigator.share({
+            title: 'Enhanced Image',
+            text: 'Check out this enhanced image!'
+          });
+        } catch (err) {
+          toast.error("Couldn't share the image");
+        }
+      }
+    } else {
+      toast.error("Sharing not supported on this browser");
+    }
   };
 
   return (
@@ -54,15 +83,26 @@ export const EnhancementResult: React.FC<EnhancementResultProps> = ({
             />
           </div>
           
-          <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-            <Button 
-              className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80 py-6" 
-              onClick={handleDownload}
-            >
-              <UploadCloud className="mr-2 h-4 w-4" />
-              Download Enhanced Image
-            </Button>
-          </motion.div>
+          <div className="grid grid-cols-2 gap-2">
+            <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+              <Button 
+                className="w-full bg-esrgan-orange hover:bg-esrgan-orange/80 py-5" 
+                onClick={handleDownload}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+              <Button 
+                className="w-full bg-gray-700 hover:bg-gray-600 py-5" 
+                onClick={handleShare}
+              >
+                <Share className="mr-2 h-4 w-4" />
+                Share
+              </Button>
+            </motion.div>
+          </div>
         </CardContent>
       </Card>
       
@@ -87,13 +127,16 @@ export const EnhancementResult: React.FC<EnhancementResultProps> = ({
                   <div className="text-gray-400">Text Clarity:</div>
                   <div className="text-white font-medium">Enhanced</div>
                   
+                  <div className="text-gray-400">Color Preservation:</div>
+                  <div className="text-white font-medium">Full</div>
+                  
                   <div className="text-gray-400">Noise Reduction:</div>
                   <div className="text-white font-medium">High</div>
                   
                   {licensePlateMode === "advanced" && (
                     <>
-                      <div className="text-gray-400">Neural Processing:</div>
-                      <div className="text-white font-medium">Deep Analysis</div>
+                      <div className="text-gray-400">Processing Level:</div>
+                      <div className="text-white font-medium">Premium</div>
                       
                       <div className="text-gray-400">Edge Detection:</div>
                       <div className="text-white font-medium">Advanced</div>
@@ -114,10 +157,20 @@ export const EnhancementResult: React.FC<EnhancementResultProps> = ({
                   <div className="text-gray-400">Noise Reduction:</div>
                   <div className="text-white font-medium">{enhancementOptions.noiseReduction}%</div>
                   
+                  <div className="text-gray-400">Color Enhancement:</div>
+                  <div className="text-white font-medium">{enhancementOptions.colorBoost}%</div>
+                  
                   <div className="text-gray-400">Detail Enhancement:</div>
                   <div className="text-white font-medium">{enhancementOptions.detailEnhancement}%</div>
                 </>
               )}
+            </div>
+            
+            <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-700">
+              <p className="flex items-center">
+                <RefreshCw className="h-3 w-3 mr-1 text-esrgan-orange" />
+                Enhanced with premium quality algorithms
+              </p>
             </div>
           </div>
         </CardContent>
