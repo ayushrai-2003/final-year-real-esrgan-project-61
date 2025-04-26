@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, AlertCircle, Settings, Car, Zap, SparklesIcon } from "lucide-react";
@@ -27,19 +28,22 @@ const enhanceSharpness = (canvas: HTMLCanvasElement, level: number): HTMLCanvasE
   
   const original = new Uint8ClampedArray(data);
   
+  // Enhanced sharpness algorithm with stronger effect
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       for (let c = 0; c < 3; c++) {
         const i = (y * width + x) * 4 + c;
         
-        const centerVal = original[i];
+        // Calculate center value and surrounding average with stronger kernel
+        const centerVal = original[i] * (1 + level * 1.5);
         const surroundingAvg = (
           original[i - 4] + original[i + 4] + 
           original[i - width * 4] + original[i + width * 4]
         ) / 4;
         
+        // Increase the difference between center and surrounding for more sharpness
         const diff = centerVal - surroundingAvg;
-        data[i] = Math.min(255, Math.max(0, centerVal + diff * level));
+        data[i] = Math.min(255, Math.max(0, centerVal + diff * (level * 1.2)));
       }
     }
   }
@@ -77,7 +81,10 @@ const enhanceColors = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElem
       h /= 6;
     }
     
-    s = Math.min(1, s * (1 + level * 0.5));
+    // Enhance saturation based on level
+    s = Math.min(1, s * (1 + level * 0.7));
+    // Adjust luminance slightly for better color perception
+    l = Math.min(1, l * (1 + level * 0.2));
     
     const hslToRgb = (h: number, s: number, l: number) => {
       if (s === 0) return [l, l, l];
@@ -123,6 +130,7 @@ const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElemen
   
   const original = new Uint8ClampedArray(data);
   
+  // Adaptive filter size based on level
   const filterSize = Math.max(1, Math.round(level * 2));
   
   for (let y = filterSize; y < height - filterSize; y++) {
@@ -138,11 +146,13 @@ const reduceNoise = (canvas: HTMLCanvasElement, level: number): HTMLCanvasElemen
           }
         }
         
+        // Sort values and use median for a stronger noise reduction
         values.sort((a, b) => a - b);
         const medianIndex = Math.floor(values.length / 2);
         const centerVal = original[i];
         
-        data[i] = centerVal * (1 - level) + values[medianIndex] * level;
+        // Balance between original and median based on level
+        data[i] = Math.round(centerVal * (1 - level) + values[medianIndex] * level);
       }
     }
   }
@@ -158,14 +168,16 @@ const enhanceContrast = (canvas: HTMLCanvasElement, level: number): HTMLCanvasEl
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
+  // Find the minimum and maximum brightness values
   let min = 255, max = 0;
   for (let i = 0; i < data.length; i += 4) {
-    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const brightness = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
     if (brightness < min) min = brightness;
     if (brightness > max) max = brightness;
   }
   
-  const factor = 255 / (max - min) * level + (1 - level);
+  // Apply stronger contrast stretching based on level
+  const factor = 255 / (max - min) * (level * 1.5) + (1 - level);
   const offset = -min * factor * level;
   
   for (let i = 0; i < data.length; i += 4) {
@@ -189,6 +201,7 @@ const upscaleImage = (canvas: HTMLCanvasElement, factor: number): HTMLCanvasElem
   const ctx = newCanvas.getContext('2d');
   if (!ctx) return canvas;
   
+  // Use high quality image smoothing for better upscaling
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
@@ -200,104 +213,72 @@ const enhanceLicensePlate = (canvas: HTMLCanvasElement, isAdvanced: boolean = fa
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
   
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = imageData.data;
+  // Create a copy to work with
+  const enhancedCanvas = document.createElement('canvas');
+  enhancedCanvas.width = canvas.width;
+  enhancedCanvas.height = canvas.height;
+  const enhancedCtx = enhancedCanvas.getContext('2d');
+  if (!enhancedCtx) return canvas;
+  enhancedCtx.drawImage(canvas, 0, 0);
   
-  for (let i = 0; i < data.length; i += 4) {
-    const grayValue = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-    data[i] = data[i + 1] = data[i + 2] = grayValue;
-  }
+  // First improve contrast dramatically
+  let processedCanvas = enhanceContrast(enhancedCanvas, 1.0);
   
-  ctx.putImageData(imageData, 0, 0);
+  // Apply strong sharpening
+  processedCanvas = enhanceSharpness(processedCanvas, 1.0);
   
-  const contrastCanvas = enhanceContrast(canvas, 0.9);
-  
-  let processedCanvas = enhanceSharpness(contrastCanvas, 0.9);
-  
+  // For license plates, we want to preserve colors, not convert to B&W
   if (isAdvanced) {
+    // Apply edge enhancement for advanced mode
     const edgeCtx = processedCanvas.getContext('2d');
     if (edgeCtx) {
       const edgeData = edgeCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
       const edgePixels = edgeData.data;
+      const original = new Uint8ClampedArray(edgePixels);
       const width = processedCanvas.width;
       const height = processedCanvas.height;
       
-      const original = new Uint8ClampedArray(edgePixels);
-      
+      // Apply adaptive local contrast enhancement for text
       for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
           const pos = (y * width + x) * 4;
           
-          const gx = 
-            -1 * original[((y-1) * width + (x-1)) * 4] +
-            -2 * original[((y) * width + (x-1)) * 4] +
-            -1 * original[((y+1) * width + (x-1)) * 4] +
-            1 * original[((y-1) * width + (x+1)) * 4] +
-            2 * original[((y) * width + (x+1)) * 4] +
-            1 * original[((y+1) * width + (x+1)) * 4];
-            
-          const gy = 
-            -1 * original[((y-1) * width + (x-1)) * 4] +
-            -2 * original[((y-1) * width + (x)) * 4] +
-            -1 * original[((y-1) * width + (x+1)) * 4] +
-            1 * original[((y+1) * width + (x-1)) * 4] +
-            2 * original[((y+1) * width + (x)) * 4] +
-            1 * original[((y+1) * width + (x+1)) * 4];
-            
-          const magnitude = Math.sqrt(gx * gx + gy * gy);
+          // Calculate local average in 3x3 neighborhood
+          let localSum = 0;
+          let count = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const neighborPos = ((y + dy) * width + (x + dx)) * 4;
+              // Use luminance (grayscale equivalent)
+              const luminance = 
+                original[neighborPos] * 0.299 + 
+                original[neighborPos + 1] * 0.587 + 
+                original[neighborPos + 2] * 0.114;
+              localSum += luminance;
+              count++;
+            }
+          }
+          const localAvg = localSum / count;
           
-          const threshold = isAdvanced ? 130 : 150;
-          const edgeValue = magnitude > threshold ? 255 : 0;
+          // Get center pixel luminance
+          const centerLuminance = 
+            original[pos] * 0.299 + 
+            original[pos + 1] * 0.587 + 
+            original[pos + 2] * 0.114;
           
-          edgePixels[pos] = edgePixels[pos + 1] = edgePixels[pos + 2] = edgeValue;
+          // Enhance difference between center pixel and local average
+          const factor = centerLuminance > localAvg ? 1.5 : 0.7;
+          
+          // Apply enhancement while preserving color
+          for (let c = 0; c < 3; c++) {
+            const enhancedValue = original[pos + c] * factor;
+            edgePixels[pos + c] = Math.min(255, Math.max(0, enhancedValue));
+          }
         }
       }
       
       edgeCtx.putImageData(edgeData, 0, 0);
     }
-    
-    const dilateCtx = processedCanvas.getContext('2d');
-    if (dilateCtx) {
-      const dilateData = dilateCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
-      const dilatePixels = dilateData.data;
-      const width = processedCanvas.width;
-      const height = processedCanvas.height;
-      
-      const original = new Uint8ClampedArray(dilatePixels);
-      
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const pos = (y * width + x) * 4;
-          
-          let maxVal = 0;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const neighborPos = ((y + dy) * width + (x + dx)) * 4;
-              maxVal = Math.max(maxVal, original[neighborPos]);
-            }
-          }
-          
-          dilatePixels[pos] = dilatePixels[pos + 1] = dilatePixels[pos + 2] = maxVal;
-        }
-      }
-      
-      dilateCtx.putImageData(dilateData, 0, 0);
-    }
-  }
-  
-  const binaryCtx = processedCanvas.getContext('2d');
-  if (binaryCtx) {
-    const binaryData = binaryCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
-    const binaryPixels = binaryData.data;
-    
-    const threshold = isAdvanced ? 130 : 150;
-    for (let i = 0; i < binaryPixels.length; i += 4) {
-      const value = binaryPixels[i];
-      const newValue = value > threshold ? 255 : 0;
-      binaryPixels[i] = binaryPixels[i + 1] = binaryPixels[i + 2] = newValue;
-    }
-    
-    binaryCtx.putImageData(binaryData, 0, 0);
   }
   
   return processedCanvas;
@@ -317,11 +298,11 @@ export function EnhancementProcessor({
   const [animateStartButton, setAnimateStartButton] = useState(false);
   
   const [enhancementSettings, setEnhancementSettings] = useState({
-    sharpnessEnhancement: 0.7,
-    noiseReduction: 0.6,
+    sharpnessEnhancement: 0.9, // Increased from 0.7
+    noiseReduction: 0.7,       // Increased from 0.6
     colorCorrection: true,
-    texturePreservation: 0.8,
-    contrastEnhancement: 0.5,
+    texturePreservation: 0.9,  // Increased from 0.8
+    contrastEnhancement: 0.8,  // Increased from 0.5
     upscalingFactor: 4,
   });
 
@@ -374,11 +355,27 @@ export function EnhancementProcessor({
           
           let processedCanvas = canvas;
           
-          processedCanvas = reduceNoise(processedCanvas, 0.8);
+          // For license plates, apply more specific processing steps
+          // First reduce noise to clean up the image
+          processedCanvas = reduceNoise(processedCanvas, 0.6);
           
+          // Apply license plate specific enhancement
           processedCanvas = enhanceLicensePlate(processedCanvas, isAdvanced);
           
-          processedCanvas = upscaleImage(processedCanvas, isAdvanced ? 3 : 2);
+          // Add a sharpen pass to make text clearer
+          processedCanvas = enhanceSharpness(processedCanvas, 0.9);
+          
+          // Enhance contrast to make text stand out more
+          processedCanvas = enhanceContrast(processedCanvas, 0.8);
+          
+          // Apply color enhancement to improve visibility
+          processedCanvas = enhanceColors(processedCanvas, 0.5);
+          
+          // Upscale the result
+          processedCanvas = upscaleImage(processedCanvas, isAdvanced ? 4 : 3);
+          
+          // Final sharpening pass
+          processedCanvas = enhanceSharpness(processedCanvas, 0.7);
           
           const enhancedImageUrl = processedCanvas.toDataURL('image/png');
           resolve(enhancedImageUrl);
@@ -426,17 +423,27 @@ export function EnhancementProcessor({
           
           let processedCanvas = canvas;
           
+          // Enhanced processing pipeline for general images
+          
+          // First reduce noise
           processedCanvas = reduceNoise(processedCanvas, enhancementSettings.noiseReduction);
           
-          processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement);
-          
+          // Apply color enhancement
           if (enhancementSettings.colorCorrection) {
             processedCanvas = enhanceColors(processedCanvas, enhancementSettings.texturePreservation);
           }
           
+          // Enhance contrast
           processedCanvas = enhanceContrast(processedCanvas, enhancementSettings.contrastEnhancement);
           
+          // Apply sharpening after contrast for better details
+          processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement);
+          
+          // Upscale the image
           processedCanvas = upscaleImage(processedCanvas, enhancementSettings.upscalingFactor);
+          
+          // Final sharpening pass after upscaling
+          processedCanvas = enhanceSharpness(processedCanvas, enhancementSettings.sharpnessEnhancement * 0.7);
           
           const enhancedImageUrl = processedCanvas.toDataURL('image/png');
           resolve(enhancedImageUrl);
